@@ -42,7 +42,7 @@ categories:
       - 'update engine'
       - 'update platform'
       - 'update test'
-  # other Labels to mimmi20/BrowserDetector
+  # other Labels to mimmi20/GeoClassPHP
   - title: '**📦 Documentation:**'
     labels:
       - 'documentation'

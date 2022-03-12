@@ -54,7 +54,7 @@
   name: "documentation"
   description: "Improvements or additions to documentation"
 
-# other Labels to mimmi20/BrowserDetector
+# other Labels to mimmi20/GeoClassPHP
 - color: b0b1fc
   name: "new browser"
   description: ""
