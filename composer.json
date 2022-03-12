@@ -26,9 +26,9 @@
   "require": {
     "php": "^7.4.3 || ^8.0.0",
     "ext-mbstring": "*",
-    "pear/db": "*",
-    "pear/pear": "*",
-    "pear/soap": "*"
+    "pear/db": "^v1.11.0",
+    "pear/pear": "^v1.10.13",
+    "pear/soap": "^0.14.0"
   },
   "require-dev": {
     "mimmi20/coding-standard": "^2.6.2",
