@@ -13,6 +13,13 @@ declare(strict_types = 1);
 
 namespace GeoDB\Helper;
 
+use function imagecolorallocate;
+use function imagecreate;
+use function imagecreatefrompng;
+use function imageline;
+use function imagepng;
+use function imagesx;
+use function imagesy;
 use function is_file;
 
 /**

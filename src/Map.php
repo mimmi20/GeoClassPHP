@@ -23,6 +23,9 @@ use function explode;
 use function file;
 use function file_exists;
 use function function_exists;
+use function imagearc;
+use function imagefilledellipse;
+use function imageline;
 use function implode;
 use function mb_strpos;
 use function mb_strtolower;
@@ -218,7 +221,7 @@ final class Map extends E00
 
         if (!$hasDrawn) {
             for ($i = 1; $i <= $radius; ++$i) {
-                ImageArc($this->img, (int) $x, (int) $y, $i, $i, 0, 360, $this->color[$color]);
+                imagearc($this->img, (int) $x, (int) $y, $i, $i, 0, 360, $this->color[$color]);
             }
         }
 
