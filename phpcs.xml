@@ -13,7 +13,9 @@
     <arg name="parallel" value="8"/>
 
     <!-- inherit rules from: -->
-    <rule ref="mimmi20-cs"/>
+    <rule ref="mimmi20-cs">
+        <exclude name="Generic.CodeAnalysis.EmptyStatement.DetectedIf"/>
+    </rule>
 
     <!-- Paths to check -->
     <file>src</file>

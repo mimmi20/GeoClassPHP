@@ -3,38 +3,13 @@
  * This file is part of the mimmi20/GeoClassPHP package.
  *
  * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ * Copyright (c) 2003-2004 Stefan Motz <stefan@multimediamotz.de>, Arne Klempert <arne@klempert.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
 
 declare(strict_types = 1);
-
-// +----------------------------------------------------------------------+
-// | GeoClass                                                             |
-// +----------------------------------------------------------------------+
-// | Copyright (c) 2003-04 multimediamotz, Stefan Motz                    |
-// +----------------------------------------------------------------------+
-// | License (LGPL)                                                       |
-// | This library is free software; you can redistribute it and/or        |
-// | modify it under the terms of the GNU Lesser General Public           |
-// | License as published by the Free Software Foundation; either         |
-// | version 2.1 of the License, or (at your option) any later version.   |
-// +----------------------------------------------------------------------+
-// | This library is distributed in the hope that it will be useful,      |
-// | but WITHOUT ANY WARRANTY; without even the implied warranty of       |
-// | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU     |
-// | Lesser General Public License for more details.                      |
-// +----------------------------------------------------------------------+
-// | You should have received a copy of the GNU Lesser General Public     |
-// | License along with this library; if not, write to the Free Software  |
-// | Foundation Inc., 59 Temple Place,Suite 330, Boston,MA 02111-1307 USA |
-// +----------------------------------------------------------------------+
-// | Authors:  Stefan Motz   <stefan@multimediamotz.de>                   |
-// |           Arne Klempert <arne@klempert.de>                           |
-// | Version:  0.3.1a                                                     |
-// | Homepage: http://geoclassphp.sourceforge.net                         |
-// +----------------------------------------------------------------------+
 
 namespace GeoDB;
 
@@ -66,23 +41,24 @@ use function trim;
  */
 final class Map extends E00
 {
+    /** @var array<string, false|int> */
     private array $color = [];
 
-    private $latitudeMin;
-    private $latitudeMax;
-    private $longitudeMin;
-    private $longitudeMax;
-    private $objects  = [];
-    private $imageMap = [];
-    private $radius   = 4;
+    private float $latitudeMin;
+    private float $latitudeMax;
+    private float $longitudeMin;
+    private float $longitudeMax;
+    private int $radius = 4;
 
     /**
-     * constructor
-     *
+     * @var array<int, array<string, float|GeoObject|int|string>>
+     * @phpstan-var array<int, array{name: string, x: float, y: float, r: int, o: GeoObject, count: int, color: string}>
+     */
+    private array $imageMap = [];
+
+    /**
      * @param int|string $x width of the generated image or path to image (string)
      * @param int        $y (optional) height of the generated image
-     *
-     * @return  void
      */
     public function __construct($x = false, int $y = -1)
     {
@@ -100,7 +76,7 @@ final class Map extends E00
     /**
      * Sets the range of the map from overgiven degree-values-array
      *
-     * @param array<int> $rangeArray
+     * @param array<int, float> $rangeArray
      */
     public function setRangeByArray(array $rangeArray): void
     {
@@ -110,10 +86,11 @@ final class Map extends E00
     /**
      * Calculates distances between the corners and returns an ratio or values
      *
-     * @param int $width  preseted width, basis for height
-     * @param int $height vice versa
+     * @param array<int, float> $rangeArray
+     * @param int               $width      preseted width, basis for height
+     * @param int               $height     vice versa
      *
-     * @return  array   width and height
+     * @return array<int, float> width and height
      */
     public function getSizeByRange(array $rangeArray, int $width = 0, int $height = 0): array
     {
@@ -153,7 +130,7 @@ final class Map extends E00
     /**
      * Sets the range of the map from overgiven GeoObjects
      *
-     * @see     setRange(),setRangeByGeoObject()
+     * @see setRange(),setRangeByGeoObject()
      *
      * @param array<GeoObject> $geoObjects Array of GeoObjects
      * @param float            $border     degrees
@@ -191,7 +168,7 @@ final class Map extends E00
     /**
      * Sets the range of the map from an overgiven GeoObject
      *
-     * @see     setRange(),setRangeByGeoObjects()
+     * @see setRange(),setRangeByGeoObjects()
      *
      * @param float $border degrees
      */
@@ -224,13 +201,13 @@ final class Map extends E00
     /**
      * Adds a GeoObject to the map
      *
-     * @see     addGeoObjects()
+     * @see addGeoObjects()
      */
     public function addGeoObject(GeoObject $geoObject, string $color = 'black', int $radius = 0): void
     {
         $x = round($this->scale((int) $geoObject->longitude, 'x'));
         $y = round($this->scale((int) $geoObject->latitude, 'y'));
-        if (($x > $this->size_x) || ($y > $this->size_y)) {
+        if (($x > $this->sizeX) || ($y > $this->sizeY)) {
             return;
         }
 
@@ -259,7 +236,7 @@ final class Map extends E00
     /**
      * Adds a GeoObject to the map, respects already added objects and increases     * drawn circles, tolerance is the last radius
      *
-     * @param array $radii different sizes for different count of GeoObjects at one spot
+     * @param array<int, int> $radii different sizes for different count of GeoObjects at one spot
      */
     public function addGeoObjectIncrease(GeoObject $geoObject, string $color = 'black', array $radii = [0 => 2, 5 => 3, 10 => 4, 15 => 5, 1000 => 4]): void
     {
@@ -282,7 +259,7 @@ final class Map extends E00
                 $this->imageMap[$imc]['name'] .= ', ' . $geoObject->name;
             }
 
-            $this->imageMap[$imc]['count'] = $this->imageMap[$imc]['count'] + 1;
+            ++$this->imageMap[$imc]['count'];
             if (isset($radii[$this->imageMap[$imc]['count']])) {
                 $hasDrawn = false;
                 if (function_exists('imagefilledellipse')) {
@@ -312,7 +289,7 @@ final class Map extends E00
     /**
      * Adds GeoObjects to the map
      *
-     * @see     addGeoObject()
+     * @see addGeoObject()
      *
      * @param array<GeoObject> $geoObjects Array of GeoObjects
      */
@@ -328,11 +305,11 @@ final class Map extends E00
      *
      * container for API compatibility with PEAR::Image_GIS
      *
-     * @see     \map::draw()
+     * @see \map::draw()
      *
      * @param string $data path to e00-file
      */
-    public function addDataFile(string $data, $color = 'black'): bool
+    public function addDataFile(string $data, string $color = 'black'): bool
     {
         if ('.ovl' === mb_strtolower(mb_substr($data, -4))) {
             return $this->addOvlFile($data, $color);
@@ -350,11 +327,11 @@ final class Map extends E00
     /**
      * Adds an ovl-file to the image
      *
-     * @see     \map::draw()
+     * @see \map::draw()
      *
      * @param string $data path to ovl-file
      */
-    public function addOvlFile(string $data, $color = 'black'): bool
+    public function addOvlFile(string $data, string $color = 'black'): bool
     {
         if (file_exists($data)) {
             $ovlRows       = file($data);
@@ -398,7 +375,7 @@ final class Map extends E00
      *
      * container for API compatibility with PEAR::Image_GIS
      *
-     * @see     \map::dump()
+     * @see \map::dump()
      */
     public function saveImage(string $file): void
     {
@@ -410,7 +387,7 @@ final class Map extends E00
      *
      * @param string $name name of the ImageMap
      *
-     * @return  string  html
+     * @return string  html
      */
     public function getImageMap(string $name = 'map'): string
     {
@@ -430,19 +407,19 @@ final class Map extends E00
      * Attributes is an associate array, where the key is the attribute.
      * array("alt"=>"http://example.com/show.php?id=[id]") where id is a dbValue     *
      *
-     * @param string $name       name of the ImageMap
-     * @param array  $attributes attributes for the area
+     * @param string                $name       name of the ImageMap
+     * @param array<string, string> $attributes attributes for the area
      *
-     * @return  string  html
+     * @return string html
      */
-    public function getImageMapExtended(string $name = 'map', array $attributes = [], $areas = ''): string
+    public function getImageMapExtended(string $name = 'map', array $attributes = [], string $areas = ''): string
     {
         $defaultAttributes = ['href' => '#', 'alt' => ''];
         $attributes        = array_merge($defaultAttributes, $attributes);
         $html              = '<map name="' . $name . "\">\n";
         foreach ($this->imageMap as $koord) {
             $theObject           = $koord['o'];
-            $im_array            = [
+            $imArray             = [
                 'imagemap_name' => $koord['name'],
                 'imagemap_x' => $koord['x'],
                 'imagemap_y' => $koord['y'],
@@ -450,7 +427,7 @@ final class Map extends E00
                 'imagemap_count' => $koord['count'],
                 'imagemap_color' => $koord['color'],
             ];
-            $theObject->dbValues = array_merge($theObject->dbValues, $im_array);
+            $theObject->dbValues = array_merge($theObject->dbValues, $imArray);
             $attributeList       = [];
             foreach ($attributes as $attKey => $attVal) {
                 if ('href' === $attKey) {

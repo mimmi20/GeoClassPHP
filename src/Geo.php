@@ -3,6 +3,7 @@
  * This file is part of the mimmi20/GeoClassPHP package.
  *
  * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ * Copyright (c) 2003-2004 Stefan Motz <stefan@multimediamotz.de>, Arne Klempert <arne@klempert.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -240,13 +241,13 @@ final class Geo extends PEAR
     /**
      * Creates a new Geo object with the specified type
      *
-     * @see     DB
+     * @see DB
      *
-     * @param string $type    geo type, for example "DB_Nima"
-     * @param string $dsn     DSN
-     * @param array  $options Options for implementation
+     * @param string       $type    geo type, for example "DB_Nima"
+     * @param string       $dsn     DSN
+     * @param array<mixed> $options Options for implementation
      *
-     * @return  mixed   a newly created Geo object or an Error object on error
+     * @return mixed   a newly created Geo object or an Error object on error
      */
     public function setupSource(string $type, string $dsn = '', array $options = [])
     {
@@ -262,10 +263,8 @@ final class Geo extends PEAR
 
     /**
      * Creates a new Geo_Map object
-     *
-     * @return  mixed   a newly created Geo object, or a Error object on error
      */
-    public function setupMap(int $x, int $y = -1)
+    public function setupMap(int $x, int $y = -1): Map
     {
         return new Map($x, $y);
     }
@@ -278,9 +277,9 @@ final class Geo extends PEAR
      *
      * @param string $dms latitude/longitude as degree/minutes/seconds
      *
-     * @return  float   degree
+     * @return float   degree
      */
-    public static function dms2deg(string $dms, $language = self::GEO_LANGUAGE_DEFAULT): float
+    public static function dms2deg(string $dms, int $language = self::GEO_LANGUAGE_DEFAULT): float
     {
         $negativeSigns       = [self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][4], self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][6], '-'];
         $negativeSignsString = self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][4] . self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][6];
@@ -290,7 +289,8 @@ final class Geo extends PEAR
             $dms = '00' . $dms;
         }
 
-        $searchPattern = "|\\s*([{$negativeSignsString}\\-\\+]?)\\s*(\\d{1,3})[\\°\\s]*(\\d{1,2})[\\'\\s]*(\\d{1,2})([\\,\\.]*)(\\d*)[\\'\"\\s]*([{$negativeSignsString}\\-\\+]?)|i";
+        $searchPattern = sprintf("|\\s*([%$1s\\-\\+]?)\\s*(\\d{1,3})[\\°\\s]*(\\d{1,2})[\\'\\s]*(\\d{1,2})([\\,\\.]*)(\\d*)[\\'\"\\s]*([%$1s\\-\\+]?)|i", $negativeSignsString);
+
         if (!preg_match($searchPattern, $dms, $result)) {
             return PEAR::raiseError('No DMS-Format (Like 51° 24\' 32.123\'\' W)');
         }
@@ -316,7 +316,7 @@ final class Geo extends PEAR
      * parameter $decPlaces. The direction (N, S, W, E) must be added manually
      * (e.g. $output = "E ".deg2dms(7.441944); )
      *
-     * @return  string  degrees minutes seconds
+     * @return string  degrees minutes seconds
      */
     public static function deg2dms(float $degFloat, int $decPlaces = 0): string
     {
@@ -327,16 +327,17 @@ final class Geo extends PEAR
         $deg        = 60 * ($deg - $minutes);
         $seconds    = floor($deg);
         $subseconds = $deg - $seconds;
+
         for ($i = 1; $i <= $decPlaces; ++$i) {
             $subseconds = 10 * $subseconds;
         }
 
         $subseconds = floor($subseconds);
         if (0 < $decPlaces) {
-            $seconds .= '.' . sprintf("%0{$decPlaces}s", $subseconds);
+            $seconds .= '.' . sprintf('%0' . $decPlaces . 's', $subseconds);
         }
 
-        return $degree . "° {$minutes}' {$seconds}''";
+        return $degree . sprintf("° %s' %s''", $minutes, $seconds);
     }
 
     /**
@@ -348,7 +349,7 @@ final class Geo extends PEAR
      *
      * @param int $unit use the GEO_UNIT_* constants
      */
-    public static function getEarthRadius(int $unit = self::GEO_UNIT_DEFAULT)
+    public static function getEarthRadius(int $unit = self::GEO_UNIT_DEFAULT): float
     {
         switch ($unit) {
             case self::GEO_UNIT_KM:        // kilometer
@@ -383,7 +384,7 @@ final class Geo extends PEAR
      * @param array<GeoObject> $theObjects array og GeoObjects
      * @param string           $name       Name of the new Geo Object
      *
-     * @return  GeoObject       a newly created Geo object
+     * @return GeoObject       a newly created Geo object
      */
     public static function getBarycenter(array $theObjects, string $name = 'Barycenter'): GeoObject
     {

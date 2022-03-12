@@ -3,6 +3,7 @@
  * This file is part of the mimmi20/GeoClassPHP package.
  *
  * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ * Copyright (c) 2003-2004 Stefan Motz <stefan@multimediamotz.de>, Arne Klempert <arne@klempert.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -14,6 +15,7 @@ $header = <<<'EOF'
     This file is part of the mimmi20/GeoClassPHP package.
 
     Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+    Copyright (c) 2003-2004 Stefan Motz <stefan@multimediamotz.de>, Arne Klempert <arne@klempert.de>
 
     For the full copyright and license information, please view the LICENSE
     file that was distributed with this source code.
@@ -42,6 +44,7 @@ return $config
                     'location' => 'after_open',
                     'separate' => 'bottom',
                 ],
+                'final_class' => false,
             ]
         )
     )

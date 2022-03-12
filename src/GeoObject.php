@@ -3,38 +3,13 @@
  * This file is part of the mimmi20/GeoClassPHP package.
  *
  * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ * Copyright (c) 2003-2004 Stefan Motz <stefan@multimediamotz.de>, Arne Klempert <arne@klempert.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
 
 declare(strict_types = 1);
-
-// +----------------------------------------------------------------------+
-// | GeoClass                                                             |
-// +----------------------------------------------------------------------+
-// | Copyright (c) 2003-04 multimediamotz, Stefan Motz                    |
-// +----------------------------------------------------------------------+
-// | License (LGPL)                                                       |
-// | This library is free software; you can redistribute it and/or        |
-// | modify it under the terms of the GNU Lesser General Public           |
-// | License as published by the Free Software Foundation; either         |
-// | version 2.1 of the License, or (at your option) any later version.   |
-// +----------------------------------------------------------------------+
-// | This library is distributed in the hope that it will be useful,      |
-// | but WITHOUT ANY WARRANTY; without even the implied warranty of       |
-// | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU     |
-// | Lesser General Public License for more details.                      |
-// +----------------------------------------------------------------------+
-// | You should have received a copy of the GNU Lesser General Public     |
-// | License along with this library; if not, write to the Free Software  |
-// | Foundation Inc., 59 Temple Place,Suite 330, Boston,MA 02111-1307 USA |
-// +----------------------------------------------------------------------+
-// | Authors:  Stefan Motz   <stefan@multimediamotz.de>                   |
-// |           Arne Klempert <arne@klempert.de>                           |
-// | Version:  0.3.1a                                                     |
-// | Homepage: http://geoclassphp.sourceforge.net                         |
-// +----------------------------------------------------------------------+
 
 namespace GeoDB;
 
@@ -98,26 +73,23 @@ final class GeoObject
 
     /**
      * Database values
+     *
+     * @var array<mixed>
      */
     public array $dbValues = [];
 
     /**
-     * Constructor Geo_Object
-     *
      * $latitude and $longitude absolute > PI, otherwise there is an auto-detection
      *
-     * @param string $name      name of the location
-     * @param float  $latitude  latitude given as radiant or degree
-     * @param float  $longitude longitude given as radiant or degree
-     * @param bool   $degree    false by default, has to be set to true if
-     * @param array  $dbValues  database values, specific to the source implementation
-     *
-     * @return  void
+     * @param string       $name      name of the location
+     * @param float        $latitude  latitude given as radiant or degree
+     * @param float        $longitude longitude given as radiant or degree
+     * @param bool         $degree    false by default, has to be set to true if
+     * @param array<mixed> $dbValues  database values, specific to the source implementation
      */
     public function __construct(string $name = '', float $latitude = 0.0, float $longitude = 0.0, bool $degree = false, array $dbValues = [])
     {
-        $this->name = $name;
-
+        $this->name     = $name;
         $this->dbValues = $dbValues;
 
         if (mb_strstr((string) $latitude, ' ') && mb_strstr((string) $longitude, ' ')) {
@@ -153,7 +125,7 @@ final class GeoObject
      * Returns the distance between an overgiven and this
      * GeoObject in the passed unit as float.
      *
-     * @see     getDistanceString()
+     * @see getDistanceString()
      *
      * @param GeoObject $geoObject GeoObject
      * @param int       $unit      please use GEO_UNIT_* constants
@@ -172,7 +144,7 @@ final class GeoObject
      * rounded to 2 decimal places. The passed unit is returned at
      * the end of the sting.
      *
-     * @see     getDistance()
+     * @see getDistance()
      *
      * @param GeoObject $geoObject GeoObject
      * @param int       $unit      please use GEO_UNIT_* constants
@@ -188,7 +160,7 @@ final class GeoObject
      * Returns the north-south distance between this and the passed
      * object in the passed unit as float.
      *
-     * @see     getDistanceWE()
+     * @see getDistanceWE()
      *
      * @param GeoObject $geoObject GeoObject
      * @param int       $unit      please use GEO_UNIT_* constants
@@ -211,7 +183,7 @@ final class GeoObject
      * Returns the west-east distance between this and the passed
      * object in the passed unit as float.
      *
-     * @see     getDistanceNS()
+     * @see getDistanceNS()
      *
      * @param int $unit please use GEO_UNIT_* constants
      */
@@ -297,7 +269,7 @@ final class GeoObject
      * Use getRDFDataFile() for a document with header and footer.
      * The indent-paramter allows a better structure.
      *
-     * @see     getRDFDataFile()
+     * @see getRDFDataFile()
      */
     public function getRDFPointEntry(int $indent = 0): string
     {
@@ -319,9 +291,7 @@ final class GeoObject
      * or, with multiple entries, here: http://www.w3.org/2003/01/geo/test/towns.rdf
      * The only entry is this Object.
      *
-     * @see     getRDFPointEntry()
-     *
-     * @param int
+     * @see getRDFPointEntry()
      */
     public function getRDFDataFile(): string
     {

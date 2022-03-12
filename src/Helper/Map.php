@@ -3,6 +3,7 @@
  * This file is part of the mimmi20/GeoClassPHP package.
  *
  * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ * Copyright (c) 2003-2004 Stefan Motz <stefan@multimediamotz.de>, Arne Klempert <arne@klempert.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -11,8 +12,6 @@
 declare(strict_types = 1);
 
 namespace GeoDB\Helper;
-
-use GdImage;
 
 use function is_file;
 
@@ -28,16 +27,16 @@ use function is_file;
  *
  * http://jan.kneschke.de/projects/
  */
-final class Map
+class Map
 {
-    /** @var false|GdImage|resource */
-    private $img;
+    /** @var false|resource */
+    protected $img;
 
     /** @var false|int|string */
-    private $size_x;
+    protected $sizeX;
 
     /** @var false|int */
-    private $size_y;
+    protected $sizeY;
 
     /** @var array<int> */
     private array $min;
@@ -45,42 +44,40 @@ final class Map
     /** @var array<int> */
     private array $max;
 
-    private $scale;
-
     /**
      * prepares the image generation and inits the internal variables
      *
-     * @param int|string $size_x width of the generated image or path to image (string)
-     * @param int        $size_y (optional) height of the generated image
+     * @param int|string $sizeX width of the generated image or path to image (string)
+     * @param int        $sizeY (optional) height of the generated image
      */
-    public function __construct($size_x, int $size_y = -1)
+    public function __construct($sizeX, int $sizeY = -1)
     {
-        if (is_file($size_x)) {
-            $this->img = imagecreatefrompng($size_x);
+        if (is_file($sizeX)) {
+            $this->img = imagecreatefrompng($sizeX);
 
-            $this->size_x = imagesx($this->img);
-            $this->size_y = imagesy($this->img);
+            $this->sizeX = imagesx($this->img);
+            $this->sizeY = imagesy($this->img);
         } else {
-            $this->size_x = $size_x;
-            $this->size_y = $size_y;
+            $this->sizeX = $sizeX;
+            $this->sizeY = $sizeY;
 
             if (
-                !isset($this->size_x)
-                || 0 > $this->size_x
-                || 2048 < $this->size_x
+                !isset($this->sizeX)
+                || 0 > $this->sizeX
+                || 2048 < $this->sizeX
             ) {
-                $this->size_x = 640;
+                $this->sizeX = 640;
             }
 
             if (
-                !isset($this->size_y)
-                || 0 > $this->size_y
-                || 2048 < $this->size_y
+                !isset($this->sizeY)
+                || 0 > $this->sizeY
+                || 2048 < $this->sizeY
             ) {
-                $this->size_y = 480;
+                $this->sizeY = 480;
             }
 
-            $this->img = imagecreate($this->size_x, $this->size_y);
+            $this->img = imagecreate($this->sizeX, $this->sizeY);
         }
 
         $this->min = ['x' => 9, 'y' => 55];
@@ -107,12 +104,12 @@ final class Map
      * @param float|int $p point (array('x' => 0, 'y' => 1);
      * @param string    $d direction ('x' or 'y')
      */
-    private function scale($p, string $d): int
+    protected function scale($p, string $d): int
     {
         if ('y' === $d) {
-            $r = ($p - $this->max[$d]) * $this->size_y / ($this->min[$d] - $this->max[$d]);
+            $r = ($p - $this->max[$d]) * $this->sizeY / ($this->min[$d] - $this->max[$d]);
         } else {
-            $r = ($p - $this->min[$d]) * $this->size_x / ($this->max[$d] - $this->min[$d]);
+            $r = ($p - $this->min[$d]) * $this->sizeX / ($this->max[$d] - $this->min[$d]);
         }
 
         return (int) $r;
@@ -125,10 +122,8 @@ final class Map
      * @param int $y1 y-value of the start-point of the line
      * @param int $x2 x-value of the end-point of the line
      * @param int $y2 y-value of the end-point of the line
-     *
-     * @private
      */
-    private function draw_clipped(int $x1, int $y1, int $x2, int $y2, int $col): void
+    protected function drawClipped(int $x1, int $y1, int $x2, int $y2, int $col): void
     {
         if (
             (
@@ -166,7 +161,7 @@ final class Map
      *
      * @param string $fn filename
      */
-    private function dump(string $fn)
+    protected function dump(string $fn): bool
     {
         return imagepng($this->img, $fn);
     }
@@ -177,8 +172,10 @@ final class Map
      * @param int $r red
      * @param int $g green
      * @param int $b blue
+     *
+     * @return false|int
      */
-    private function color(int $r, int $g, int $b)
+    protected function color(int $r, int $g, int $b)
     {
         return imagecolorallocate($this->img, $r, $g, $b);
     }

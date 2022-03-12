@@ -3,38 +3,13 @@
  * This file is part of the mimmi20/GeoClassPHP package.
  *
  * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ * Copyright (c) 2003-2004 Stefan Motz <stefan@multimediamotz.de>, Arne Klempert <arne@klempert.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
 
 declare(strict_types = 1);
-
-// +----------------------------------------------------------------------+
-// | GeoClass                                                             |
-// +----------------------------------------------------------------------+
-// | Copyright (c) 2003-04 multimediamotz, Stefan Motz                    |
-// +----------------------------------------------------------------------+
-// | License (LGPL)                                                       |
-// | This library is free software; you can redistribute it and/or        |
-// | modify it under the terms of the GNU Lesser General Public           |
-// | License as published by the Free Software Foundation; either         |
-// | version 2.1 of the License, or (at your option) any later version.   |
-// +----------------------------------------------------------------------+
-// | This library is distributed in the hope that it will be useful,      |
-// | but WITHOUT ANY WARRANTY; without even the implied warranty of       |
-// | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU     |
-// | Lesser General Public License for more details.                      |
-// +----------------------------------------------------------------------+
-// | You should have received a copy of the GNU Lesser General Public     |
-// | License along with this library; if not, write to the Free Software  |
-// | Foundation Inc., 59 Temple Place,Suite 330, Boston,MA 02111-1307 USA |
-// +----------------------------------------------------------------------+
-// | Authors:  Stefan Motz   <stefan@multimediamotz.de>                   |
-// |           Arne Klempert <arne@klempert.de>                           |
-// | Version:  0.3.1a                                                     |
-// | Homepage: http://geoclassphp.sourceforge.net                         |
-// +----------------------------------------------------------------------+
 
 namespace GeoDB\DB;
 
@@ -54,15 +29,16 @@ use function is_string;
  * and further information. It must use a join-condition, otherwise
  * use DB.
  */
-final class Relational extends DB
+class Relational extends DB
 {
     /**
      * some options
      *
-     * @var  array    options
+     * @var array<string, array<string, string>|bool|int|string>
+     * @phpstan-var array{language: int, table: string, joins: array<string, string>, fields: array{name: string, longitude: string, latitude: string}, key: string, order: string, degree: bool, unit: int, encoding: string}
      */
     public array $options = [
-        'language' => 'en',
+        'language' => Geo::GEO_LANGUAGE_DEFAULT,
         'table' => 'coordinates co, further_information fi',
         'joins' => ['co.id = fi.id'],
         /*
@@ -81,14 +57,10 @@ final class Relational extends DB
     ];
 
     /**
-     * constructor Geo_DB_Relational
-     *
-     * @return  void
-     *
-     * @var     string
-     * @var     array
+     * @param array<string, int|string> $options
+     * @phpstan-param  array{language: int, unit: int, encoding: string} $options
      */
-    public function __construct($dsn, $options = [])
+    public function __construct(string $dsn, array $options = [])
     {
         $this->_connectDB($dsn);
         $this->setOptions($options);
@@ -99,11 +71,15 @@ final class Relational extends DB
      *
      * Returns an array of GeoObjects which fits the $searchConditions
      *
-     * @param mixed $searchConditions string or array
+     * @param array<int|string, string>|string $searchConditions
+     *
+     * @return array<GeoObject>
      */
     public function findGeoObject($searchConditions = '%'): array
     {
         if (is_array($searchConditions)) {
+            $where = [];
+
             foreach ($searchConditions as $key => $val) {
                 if (is_string($key)) {
                     $where[] = $key . " = '" . $val . "'";
@@ -132,6 +108,8 @@ final class Relational extends DB
      * Default is radius of 100 (100 of specified unit, see configuration and maxHits of 50
      * Returns an array of GeoDB-objects which lie in ther radius of the passed GeoObject.
      *
+     * @return array<GeoObject>
+     *
      * @todo    void MySQL specific SQL
      */
     public function findCloseByGeoObjects(GeoObject $geoObject, int $maxRadius = 100, int $maxHits = 50): array
@@ -140,10 +118,10 @@ final class Relational extends DB
                     $this->getDistanceFormula($geoObject) . ' AS distance' .
                  ' FROM ' . $this->options['table'] .
                  ' WHERE ' . implode(' AND ', $this->options['joins']) .
-                            ' AND ' . $this->getDistanceFormula($geoObject) . " < {$maxRadius}" .
+                            ' AND ' . $this->getDistanceFormula($geoObject) . ' < ' . $maxRadius .
                  ' ORDER BY distance ASC';
         if ($maxHits) {
-            $query .= " LIMIT 0, {$maxHits}";
+            $query .= ' LIMIT 0, ' . $maxHits;
         }
 
         return $this->performQuery($query);

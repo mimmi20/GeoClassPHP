@@ -3,38 +3,13 @@
  * This file is part of the mimmi20/GeoClassPHP package.
  *
  * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ * Copyright (c) 2003-2004 Stefan Motz <stefan@multimediamotz.de>, Arne Klempert <arne@klempert.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
 
 declare(strict_types = 1);
-
-// +----------------------------------------------------------------------+
-// | GeoClass                                                             |
-// +----------------------------------------------------------------------+
-// | Copyright (c) 2003-04 multimediamotz, Stefan Motz                    |
-// +----------------------------------------------------------------------+
-// | License (LGPL)                                                       |
-// | This library is free software; you can redistribute it and/or        |
-// | modify it under the terms of the GNU Lesser General Public           |
-// | License as published by the Free Software Foundation; either         |
-// | version 2.1 of the License, or (at your option) any later version.   |
-// +----------------------------------------------------------------------+
-// | This library is distributed in the hope that it will be useful,      |
-// | but WITHOUT ANY WARRANTY; without even the implied warranty of       |
-// | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU     |
-// | Lesser General Public License for more details.                      |
-// +----------------------------------------------------------------------+
-// | You should have received a copy of the GNU Lesser General Public     |
-// | License along with this library; if not, write to the Free Software  |
-// | Foundation Inc., 59 Temple Place,Suite 330, Boston,MA 02111-1307 USA |
-// +----------------------------------------------------------------------+
-// | Authors:  Stefan Motz   <stefan@multimediamotz.de>                   |
-// |           Arne Klempert <arne@klempert.de>                           |
-// | Version:  0.3.1a                                                     |
-// | Homepage: http://geoclassphp.sourceforge.net                         |
-// +----------------------------------------------------------------------+
 
 namespace GeoDB\DB;
 
@@ -54,10 +29,11 @@ final class Nima extends DB
     /**
      * some options
      *
-     * @var  array    options
+     * @var array<string, array<string, string>|bool|int|string>
+     * @phpstan-var array{language: int, table: string, fields: array{name: string, longitude: string, latitude: string}, order: string, native: bool, degree: bool, unit: int, encoding: string}
      */
     public array $options = [
-        'language' => 'en',
+        'language' => Geo::GEO_LANGUAGE_DEFAULT,
         'table' => 'nima',
         'fields' => [
             'name' => 'FULL_NAME',
@@ -78,18 +54,16 @@ final class Nima extends DB
 
     /**
      * states of the Nima database
+     *
+     * @var array<mixed>
      */
     public array $states = [];
 
     /**
-     * constructor Geo_Nima
-     *
-     * @return  void
-     *
-     * @var     string
-     * @var     array
+     * @param array<string, int|string> $options
+     * @phpstan-param  array{language: int, unit: int, encoding: string} $options
      */
-    public function __construct($dsn, $options = [])
+    public function __construct(string $dsn, array $options = [])
     {
         $this->_connectDB($dsn);
         $this->setOptions($options);
@@ -124,6 +98,7 @@ final class Nima extends DB
         $statesObjectArray = $this->performQuery('SELECT * FROM ' . $this->options['table'] . " WHERE DSG = 'ADM1' AND NT = 'N' ORDER BY ADM1");
         foreach ($statesObjectArray as $statesObject) {
             $key = $statesObject->dbValues['ADM1'];
+
             if ($statesObject->dbValues['SHORT_FORM']) {
                 $this->states[$key] = $statesObject->dbValues['SHORT_FORM'];
             } elseif ($statesObject->name) {
@@ -140,7 +115,7 @@ final class Nima extends DB
      * A set or a single place classification could be passed.
      * By default all classifications (1=big, 5=small, 0=unclassified or very small) are considered.
      *
-     * @return  array   GeoObjects
+     * @return array<GeoObject>
      */
     public function findClassifiedPopulatedPlace(string $name, string $placeClassificationSet = '1,2,3,4,5,0'): array
     {
@@ -153,9 +128,11 @@ final class Nima extends DB
      *
      * By default all classifications ("A,P,V,L,U,R,T,H,S") respective (1=big, 5=small, 0=unclassified or very small) are considered.
      *
-     * @see     DB
+     * @see DB
      *
-     * @param array|string $searchConditions
+     * @param array<int|string, string>|string $searchConditions
+     *
+     * @return array<GeoObject>
      */
     public function findGeoObject($searchConditions = '%', string $featureClassificationSet = 'A,P,V,L,U,R,T,H,S', string $placeClassificationSet = '0,1,2,3,4,5,6'): array
     {
@@ -165,7 +142,7 @@ final class Nima extends DB
 
         $query = 'SELECT *' .
                  ' FROM  ' . $this->options['table'] .
-                 " WHERE FC IN ('" . str_replace(',', "','", $featureClassificationSet) . "') AND PC IN ({$placeClassificationSet})" .
+                 " WHERE FC IN ('" . str_replace(',', "','", $featureClassificationSet) . "') AND PC IN (" . $placeClassificationSet . ')' .
                  ' AND ' . $this->options['fields']['name'] . " LIKE '" . $searchConditions . "'" .
                  ' ORDER BY ' . $this->options['order'];
 
@@ -179,15 +156,15 @@ final class Nima extends DB
      * A set or a single feature classifications and a single or a set of feature classifications place classification could be passed.
      * By default all classifications ("A,P,V,L,U,R,T,H,S") respective (1=big, 5=small, 0=unclassified or very small) are considered.
      *
-     * @return  mixed   arry of GeoObjects or DBError
+     * @return array<GeoObject>
      */
     public function findCloseByGeoObjects(GeoObject $geoObject, int $maxRadius = 100, int $maxHits = 50, string $featureClassificationSet = 'A,P,V,L,U,R,T,H,S', string $placeClassificationSet = '0,1,2,3,4,5,6'): array
     {
         $query  = 'SELECT *,';
         $query .= ' ' . $this->getDistanceFormula($geoObject) . ' AS distance';
         $query .= ' FROM ' . $this->options['table'];
-        $query .= " WHERE FC IN ('" . str_replace(',', "','", $featureClassificationSet) . "') AND PC IN ({$placeClassificationSet})";
-        $query .= ' AND ' . $this->getDistanceFormula($geoObject) . " < {$maxRadius}";
+        $query .= " WHERE FC IN ('" . str_replace(',', "','", $featureClassificationSet) . "') AND PC IN (" . $placeClassificationSet . ')';
+        $query .= ' AND ' . $this->getDistanceFormula($geoObject) . ' < ' . $maxRadius;
         if ($this->options['native']) {
             $query .= " AND NT = 'N'";
         }
@@ -195,7 +172,7 @@ final class Nima extends DB
         $query .= ' ORDER BY distance';
 
         if ($maxHits) {
-            $query .= " LIMIT 0, {$maxHits}";
+            $query .= ' LIMIT 0, ' . $maxHits;
         }
 
         return $this->performQuery($query);
