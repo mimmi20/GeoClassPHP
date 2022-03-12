@@ -1,5 +1,15 @@
 <?php
-//
+/**
+ * This file is part of the mimmi20/GeoClassPHP package.
+ *
+ * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types = 1);
+
 // +----------------------------------------------------------------------+
 // | GeoClass                                                             |
 // +----------------------------------------------------------------------+
@@ -25,56 +35,61 @@
 // | Version:  0.3.1a                                                     |
 // | Homepage: http://geoclassphp.sourceforge.net                         |
 // +----------------------------------------------------------------------+
-//
 
-require_once "Geo/sources/DB.php";
+namespace GeoDB\DB;
+
+use GeoDB\DB;
+use GeoDB\Geo;
+use GeoDB\GeoObject;
+
+use function array_merge;
+use function implode;
+use function is_array;
+use function is_string;
 
 /**
  * Geo_DB_Relational
- * 
+ *
  * Designed for databases which seperate tables for coordinates
  * and further information. It must use a join-condition, otherwise
  * use DB.
- *
- * @access   public
- * @package  Geo
  */
-class Geo_DB_Relational extends Geo_DB {
-
+final class Relational extends DB
+{
     /**
      * some options
      *
      * @var  array    options
      */
-    var $options = array(
+    public array $options = [
         'language' => 'en',
         'table' => 'coordinates co, further_information fi',
-        'joins' => array(
-            'co.id = fi.id'
-        ),
-        /**
+        'joins' => ['co.id = fi.id'],
+        /*
          * fields must be unique within the related tables
          */
-        'fields' => array(
+        'fields' => [
             'name' => 'name',
             'longitude' => 'lon',
             'latitude' => 'lat',
-        ),
+        ],
         'key' => 'id',
         'order' => 'name',
         'degree' => true,
-        'unit' => GEO_UNIT_DEFAULT,
-        'encoding' => GEO_ENCODING_DEFAULT
-    );
+        'unit' => Geo::GEO_UNIT_DEFAULT,
+        'encoding' => Geo::GEO_ENCODING_DEFAULT,
+    ];
 
     /**
      * constructor Geo_DB_Relational
      *
-     * @var		string	$dsn
-     * @var		array	$options
-     * @return	void
+     * @return  void
+     *
+     * @var     string
+     * @var     array
      */
-    function Geo_DB_Relational($dsn, $options=array()) {
+    public function __construct($dsn, $options = [])
+    {
         $this->_connectDB($dsn);
         $this->setOptions($options);
     }
@@ -84,27 +99,29 @@ class Geo_DB_Relational extends Geo_DB {
      *
      * Returns an array of GeoObjects which fits the $searchConditions
      *
-     * @access  public
-     * @param   mixed    $searchConditions  string or array
-     * @return  array
+     * @param mixed $searchConditions string or array
      */
-    function findGeoObject($searchConditions = "%") {
+    public function findGeoObject($searchConditions = '%'): array
+    {
         if (is_array($searchConditions)) {
-            foreach($searchConditions AS $key=>$val) {
+            foreach ($searchConditions as $key => $val) {
                 if (is_string($key)) {
-                    $where[] = $key." = '".$val."'";
+                    $where[] = $key . " = '" . $val . "'";
                 } else {
                     $where[] = $val;
                 }
             }
-            $whereExpression = join(" AND ", array_merge($this->options['joins'], $where));
+
+            $whereExpression = implode(' AND ', array_merge($this->options['joins'], $where));
         } else {
-            $whereExpression = join(" AND ", $this->options['joins']).
-                               " AND ".$this->options['fields']['name']." LIKE '".$searchConditions."'";
+            $whereExpression = implode(' AND ', $this->options['joins']) .
+                               ' AND ' . $this->options['fields']['name'] . " LIKE '" . $searchConditions . "'";
         }
-        $query = "SELECT * FROM ".$this->options['table'].
-                 " WHERE ".$whereExpression.
-                 " ORDER BY ".$this->options['order'];
+
+        $query = 'SELECT * FROM ' . $this->options['table'] .
+                 ' WHERE ' . $whereExpression .
+                 ' ORDER BY ' . $this->options['order'];
+
         return $this->performQuery($query);
     }
 
@@ -115,23 +132,20 @@ class Geo_DB_Relational extends Geo_DB {
      * Default is radius of 100 (100 of specified unit, see configuration and maxHits of 50
      * Returns an array of GeoDB-objects which lie in ther radius of the passed GeoObject.
      *
-     * @access  public
-     * @param   object  &$geoObject
-     * @param   int     $maxRadius
-     * @param   int     $maxHits
-     * @return  array
      * @todo    void MySQL specific SQL
      */
-    function findCloseByGeoObjects(&$geoObject, $maxRadius = 100, $maxHits = 50) {
-        $query = "SELECT *, ".
-                    $this->getDistanceFormula($geoObject)." AS distance".
-                 " FROM ".$this->options['table'].
-                 " WHERE ".join(" AND ", $this->options['joins']).
-                            " AND ".$this->getDistanceFormula($geoObject)." < $maxRadius".
-                 " ORDER BY distance ASC";
+    public function findCloseByGeoObjects(GeoObject $geoObject, int $maxRadius = 100, int $maxHits = 50): array
+    {
+        $query = 'SELECT *, ' .
+                    $this->getDistanceFormula($geoObject) . ' AS distance' .
+                 ' FROM ' . $this->options['table'] .
+                 ' WHERE ' . implode(' AND ', $this->options['joins']) .
+                            ' AND ' . $this->getDistanceFormula($geoObject) . " < {$maxRadius}" .
+                 ' ORDER BY distance ASC';
         if ($maxHits) {
-            $query .= " LIMIT 0, $maxHits";
+            $query .= " LIMIT 0, {$maxHits}";
         }
+
         return $this->performQuery($query);
     }
 }

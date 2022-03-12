@@ -1,5 +1,15 @@
 <?php
-//
+/**
+ * This file is part of the mimmi20/GeoClassPHP package.
+ *
+ * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types = 1);
+
 // +----------------------------------------------------------------------+
 // | GeoClass                                                             |
 // +----------------------------------------------------------------------+
@@ -25,30 +35,30 @@
 // | Version:  0.3.1a                                                     |
 // | Homepage: http://geoclassphp.sourceforge.net                         |
 // +----------------------------------------------------------------------+
-//
 
-require_once 'Geo/sources/Common.php';
-require_once 'SOAP/Client.php';
+namespace GeoDB;
+
+use SOAP_Client;
+
+use function unserialize;
 
 /**
  * Geo_Soap
- *
- * @access   public
- * @package  Geo
  */
-class Geo_Soap extends Geo_Common {
-
-    var $soapClient;
+final class Soap extends Common
+{
+    private SOAP_Client $soapClient;
 
     /**
      * constructor Geo_Soap
      *
-     * @access	public
-     * @var     string  $url
-     * @var     array   $options
      * @return  void
+     *
+     * @var     string
+     * @var     array
      */
-    function Geo_Soap($url="", $options=array()) {
+    public function __construct(string $url = '', array $options = [])
+    {
         $this->soapClient = new SOAP_Client($url);
         $this->setOptions($options);
     }
@@ -58,40 +68,40 @@ class Geo_Soap extends Geo_Common {
      *
      * Returns an array of GeoObjects which fits the $searchConditions
      *
-     * @access  public
-     * @param   mixed    $searchConditions  string or array
-     * @return  array
+     * @param mixed $searchConditions string or array
      */
-    function findGeoObject($searchConditions=array()) {
-        $parametersFindCity = array('returnType' => 0, // use 0 to receive an array of GeoObjects
-                                    'name' => $searchConditions);
-        $ret = $this->soapClient->call('findGeoObject',$parametersFindCity);
+    public function findGeoObject($searchConditions = []): array
+    {
+        $parametersFindCity = [
+            'returnType' => 0, // use 0 to receive an array of GeoObjects
+            'name' => $searchConditions,
+        ];
+        $ret                = $this->soapClient->call('findGeoObject', $parametersFindCity);
+
         return unserialize($ret);
     }
 
     /**
-     * Find GeoObjects near an overgiven GeoObject
+     * Find GeoObjects near a given GeoObject
      *
      * Searches for GeoObjects, which are in a specified radius around the passed GeoBject.
      * Default is radius of 100 (100 of specified unit, see configuration and maxHits of 50
      * Returns an array of GeoObjects which lie in the radius of the passed GeoObject.
-     *
-     * @access  public
-     * @param   object  &$geoObject
-     * @param   int     $maxRadius
-     * @param   int     $maxHits
-     * @return  array
      */
-    function findCloseByGeoObjects(&$geoObject, $maxRadius = 100, $maxHits = 50) {
-        $parametersFindClose = array('returnType' => 0,
-                                     'lat' => $geoObject->latitude,
-                                     'long' => $geoObject->longitude,
-                                     'maxRadius' => $maxRadius,
-                                     'maxHits' => $maxHits,
-                                     'placeClassificationSet' => "1, 2, 3, 4, 5, 0",
-                                     'name' => $geoObject->name);
-        $ret = $this->soapClient->call('findCloseByCity',$parametersFindClose);
+    public function findCloseByGeoObjects(GeoObject $geoObject, int $maxRadius = 100, int $maxHits = 50): array
+    {
+        $parametersFindClose = [
+            'returnType' => 0,
+            'lat' => $geoObject->latitude,
+            'long' => $geoObject->longitude,
+            'maxRadius' => $maxRadius,
+            'maxHits' => $maxHits,
+            'placeClassificationSet' => '1, 2, 3, 4, 5, 0',
+            'name' => $geoObject->name,
+        ];
+
+        $ret = $this->soapClient->call('findCloseByCity', $parametersFindClose);
+
         return unserialize($ret);
     }
 }
-?>

@@ -1,5 +1,15 @@
 <?php
-//
+/**
+ * This file is part of the mimmi20/GeoClassPHP package.
+ *
+ * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types = 1);
+
 // +----------------------------------------------------------------------+
 // | GeoClass                                                             |
 // +----------------------------------------------------------------------+
@@ -25,38 +35,34 @@
 // | Version:  0.3.1a                                                     |
 // | Homepage: http://geoclassphp.sourceforge.net                         |
 // +----------------------------------------------------------------------+
-//
+
+namespace GeoDB;
+
+use function array_merge;
 
 /**
  * Geo_Common
  *
  * some common vars and methods used by the specific classes
- *
- * @access   public
- * @package  Geo
  */
-class Geo_Common {
-
+final class Common
+{
     /**
      * Options
-     *
-     * @access  private
-     * @var     array
      */
-    var $options = array(
-        'language' => GEO_LANGUAGE_DEFAULT,
-        'unit' => GEO_UNIT_DEFAULT,
-        'encoding' => GEO_ENCODING_DEFAULT
-    );
+    private array $options = [
+        'language' => Geo::GEO_LANGUAGE_DEFAULT,
+        'unit' => Geo::GEO_UNIT_DEFAULT,
+        'encoding' => Geo::GEO_ENCODING_DEFAULT,
+    ];
 
     /**
      * set options
      *
-     * @access  public
-     * @var     array    $options
-     * @return  void
+     * @var     array
      */
-    function setOptions($options=array()) {
+    public function setOptions(array $options = []): void
+    {
         $this->options = array_merge($this->options, $options);
     }
 
@@ -67,26 +73,19 @@ class Geo_Common {
      * respective as shownhere, with label/name: http://www.w3.org/2003/01/geo/test/xplanet/la.rdf
      * or, with multiple entries, here: http://www.w3.org/2003/01/geo/test/towns.rdf
      *
-     * @access  public
-     * @param   array   &$GeoObjectArray
-     * @return  string
+     * @param array<GeoObject> $geoObjectArray
      */
-    function getRDFDataFile(&$geoObjectArray) {
-        $rdfData = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n";
+    public function getRDFDataFile(array $geoObjectArray): string
+    {
+        $rdfData  = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n";
         $rdfData .= "\txmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\"\n";
         $rdfData .= "\txmlns:geo=\"http://www.w3.org/2003/01/geo/wgs84_pos#\">\n\n";
-        if (is_array($geoObjectArray)) {
-            foreach ($geoObjectArray as $anGeoObject) {
-                $rdfData .= $anGeoObject->getRDFPointEntry(1);
-                $rdfData .= "\n";
-            }
-        }
-        $rdfData .= "</rdf:RDF>";
-        return $rdfData;
-    }
 
-    function getObjectType() {
-        return get_class($this);
+        foreach ($geoObjectArray as $anGeoObject) {
+            $rdfData .= $anGeoObject->getRDFPointEntry(1);
+            $rdfData .= "\n";
+        }
+
+        return $rdfData . '</rdf:RDF>';
     }
 }
-?>

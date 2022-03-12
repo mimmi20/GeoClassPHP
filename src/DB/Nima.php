@@ -1,5 +1,15 @@
 <?php
-//
+/**
+ * This file is part of the mimmi20/GeoClassPHP package.
+ *
+ * Copyright (c) 2022, Thomas Mueller <mimmi20@live.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types = 1);
+
 // +----------------------------------------------------------------------+
 // | GeoClass                                                             |
 // +----------------------------------------------------------------------+
@@ -25,61 +35,62 @@
 // | Version:  0.3.1a                                                     |
 // | Homepage: http://geoclassphp.sourceforge.net                         |
 // +----------------------------------------------------------------------+
-//
 
-require_once "Geo/sources/DB.php";
+namespace GeoDB\DB;
+
+use GeoDB\DB;
+use GeoDB\Geo;
+use GeoDB\GeoObject;
+
+use function count;
+use function str_replace;
+use function utf8_encode;
 
 /**
  * Geo_Nima
- *
- * @access   public
- * @package  Geo
  */
-class Geo_DB_Nima extends Geo_DB {
-
+final class Nima extends DB
+{
     /**
      * some options
      *
      * @var  array    options
      */
-    var $options = array(
+    public array $options = [
         'language' => 'en',
         'table' => 'nima',
-        'fields' => array(
+        'fields' => [
             'name' => 'FULL_NAME',
             'longitude' => 'DD_LONG',
             'latitude' => 'DD_LAT',
-        ),
+        ],
         'order' => 'SORT_NAME',
         'native' => true,
         'degree' => true,
-        'unit' => GEO_UNIT_DEFAULT,
-        'encoding' => GEO_ENCODING_UTF_8
-    );
+        'unit' => Geo::GEO_UNIT_DEFAULT,
+        'encoding' => Geo::GEO_ENCODING_UTF_8,
+    ];
 
     /**
      * country of the Nima database
-     *
-     * @var  string  $country
      */
-    var $country = "unknown";
+    public string $country = 'unknown';
 
     /**
      * states of the Nima database
-     *
-     * @var  array  $states
      */
-    var $states = array();
-
+    public array $states = [];
 
     /**
      * constructor Geo_Nima
      *
-     * @var		string	$dsn
-     * @var		array	$options
-     * @return	void
+     * @return  void
+     *
+     * @var     string
+     * @var     array
      */
-    function Geo_DB_Nima($dsn, $options=array()) {
+    public function __construct($dsn, $options = [])
+    {
         $this->_connectDB($dsn);
         $this->setOptions($options);
         $this->initNimaInformation();
@@ -89,40 +100,36 @@ class Geo_DB_Nima extends Geo_DB {
      * Determines further information of the database.
      *
      * Function is called by the constructor.
-     *
-     * @access	private
-     * @return	void
      */
-    function initNimaInformation() {
-        global $cfgStrings;
-
+    public function initNimaInformation(): void
+    {
         // find GeoObject with native name of the country
-        $countryObjectArray = $this->performQuery("SELECT * FROM ".$this->options['table']." WHERE DSG = 'PCLI' AND NT = 'N'");
+        $countryObjectArray = $this->performQuery('SELECT * FROM ' . $this->options['table'] . " WHERE DSG = 'PCLI' AND NT = 'N'");
 
-        if (count($countryObjectArray) == 1) {
-            foreach($countryObjectArray AS $countryObject) {
+        if (1 === count($countryObjectArray)) {
+            foreach ($countryObjectArray as $countryObject) {
                 if ($countryObject->dbValues['SHORT_FORM']) {
                     $this->country = $countryObject->dbValues['SHORT_FORM'];
                 } elseif ($countryObject->name) {
                     $this->country = $countryObject->name;
                 } else {
-                    $this->country = $cfgStrings[GEO_ERR_NONAME][GEO_LANGUAGE];
+                    $this->country = Geo::CFG_STRINGS[Geo::GEO_ERR_NONAME][Geo::GEO_LANGUAGE_DEFAULT];
                 }
             }
         } else {
-            $this->country = $cfgStrings[GEO_ERR_NONAME][GEO_LANGUAGE];
+            $this->country = Geo::CFG_STRINGS[Geo::GEO_ERR_NONAME][Geo::GEO_LANGUAGE_DEFAULT];
         }
 
         // find GeoObject with native name of the ADM1 (states)
-        $statesObjectArray = $this->performQuery("SELECT * FROM ".$this->options['table']." WHERE DSG = 'ADM1' AND NT = 'N' ORDER BY ADM1");
-        foreach($statesObjectArray AS $statesObject) {
+        $statesObjectArray = $this->performQuery('SELECT * FROM ' . $this->options['table'] . " WHERE DSG = 'ADM1' AND NT = 'N' ORDER BY ADM1");
+        foreach ($statesObjectArray as $statesObject) {
             $key = $statesObject->dbValues['ADM1'];
             if ($statesObject->dbValues['SHORT_FORM']) {
                 $this->states[$key] = $statesObject->dbValues['SHORT_FORM'];
             } elseif ($statesObject->name) {
                 $this->states[$key] = $statesObject->name;
             } else {
-                $this->states[$key] = $cfgStrings[GEO_ERR_NONAME][GEO_LANGUAGE];
+                $this->states[$key] = Geo::CFG_STRINGS[Geo::GEO_ERR_NONAME][Geo::GEO_LANGUAGE_DEFAULT];
             }
         }
     }
@@ -133,13 +140,11 @@ class Geo_DB_Nima extends Geo_DB {
      * A set or a single place classification could be passed.
      * By default all classifications (1=big, 5=small, 0=unclassified or very small) are considered.
      *
-     * @access  public
-     * @param   string  $name
-     * @param   string  $placeClassificationSet
      * @return  array   GeoObjects
      */
-    function findClassifiedPopulatedPlace($name, $placeClassificationSet = "1,2,3,4,5,0") {
-        return $this->findGeoObject($name, "P", $placeClassificationSet);
+    public function findClassifiedPopulatedPlace(string $name, string $placeClassificationSet = '1,2,3,4,5,0'): array
+    {
+        return $this->findGeoObject($name, 'P', $placeClassificationSet);
     }
 
     /**
@@ -148,22 +153,22 @@ class Geo_DB_Nima extends Geo_DB {
      *
      * By default all classifications ("A,P,V,L,U,R,T,H,S") respective (1=big, 5=small, 0=unclassified or very small) are considered.
      *
-     * @access  public
-     * @param   string  $name
-     * @param   string  $featureClassificationSet
-     * @param   string  $placeClassificationSet
-     * @return  mixed   arry of GeoObjects or DBError
      * @see     DB
+     *
+     * @param array|string $searchConditions
      */
-    function findGeoObject($name, $featureClassificationSet = "A,P,V,L,U,R,T,H,S", $placeClassificationSet = "0,1,2,3,4,5,6") {
-        if ($this->options["encoding"] == GEO_ENCODING_UTF_8) {
-            $name = utf8_encode($name);
+    public function findGeoObject($searchConditions = '%', string $featureClassificationSet = 'A,P,V,L,U,R,T,H,S', string $placeClassificationSet = '0,1,2,3,4,5,6'): array
+    {
+        if (Geo::GEO_ENCODING_UTF_8 === $this->options['encoding']) {
+            $searchConditions = utf8_encode($searchConditions);
         }
-        $query = "SELECT *".
-                 " FROM  ".$this->options['table'].
-                 " WHERE FC IN ('".str_replace(",", "','", $featureClassificationSet)."') AND PC IN ($placeClassificationSet)".
-                 " AND ".$this->options['fields']['name']." LIKE '".$name."'".
-                 " ORDER BY ".$this->options['order'];
+
+        $query = 'SELECT *' .
+                 ' FROM  ' . $this->options['table'] .
+                 " WHERE FC IN ('" . str_replace(',', "','", $featureClassificationSet) . "') AND PC IN ({$placeClassificationSet})" .
+                 ' AND ' . $this->options['fields']['name'] . " LIKE '" . $searchConditions . "'" .
+                 ' ORDER BY ' . $this->options['order'];
+
         return $this->performQuery($query);
     }
 
@@ -174,30 +179,25 @@ class Geo_DB_Nima extends Geo_DB {
      * A set or a single feature classifications and a single or a set of feature classifications place classification could be passed.
      * By default all classifications ("A,P,V,L,U,R,T,H,S") respective (1=big, 5=small, 0=unclassified or very small) are considered.
      *
-     * @access  public
-     * @param   object  &$geoObject
-     * @param   int     $maxRadius
-     * @param   int     $maxHits
-     * @param   string  $featureClassificationSet
-     * @param   string  $placeClassificationSet
      * @return  mixed   arry of GeoObjects or DBError
      */
-    function findCloseByGeoObjects(&$geoObject, $maxRadius = 100, $maxHits = 50, $featureClassificationSet = "A,P,V,L,U,R,T,H,S", $placeClassificationSet = "0,1,2,3,4,5,6") {
-        $query = "SELECT *,";
-        $query .= " ".$this->getDistanceFormula($geoObject)." AS distance";
-        $query .= " FROM ".$this->options['table'];
-        $query .= " WHERE FC IN ('".str_replace(",", "','", $featureClassificationSet)."') AND PC IN ($placeClassificationSet)";
-        $query .= " AND ".$this->getDistanceFormula($geoObject)." < $maxRadius";
+    public function findCloseByGeoObjects(GeoObject $geoObject, int $maxRadius = 100, int $maxHits = 50, string $featureClassificationSet = 'A,P,V,L,U,R,T,H,S', string $placeClassificationSet = '0,1,2,3,4,5,6'): array
+    {
+        $query  = 'SELECT *,';
+        $query .= ' ' . $this->getDistanceFormula($geoObject) . ' AS distance';
+        $query .= ' FROM ' . $this->options['table'];
+        $query .= " WHERE FC IN ('" . str_replace(',', "','", $featureClassificationSet) . "') AND PC IN ({$placeClassificationSet})";
+        $query .= ' AND ' . $this->getDistanceFormula($geoObject) . " < {$maxRadius}";
         if ($this->options['native']) {
             $query .= " AND NT = 'N'";
         }
-        $query .= " ORDER BY distance";
+
+        $query .= ' ORDER BY distance';
 
         if ($maxHits) {
-            $query .= " LIMIT 0, $maxHits";
+            $query .= " LIMIT 0, {$maxHits}";
         }
+
         return $this->performQuery($query);
     }
-
 }
-?>
