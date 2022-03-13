@@ -13,13 +13,14 @@ declare(strict_types = 1);
 
 namespace GeoDB;
 
+use UnexpectedValueException;
+
 use function abs;
 use function acos;
 use function atan2;
 use function cos;
 use function deg2rad;
 use function in_array;
-use function is_object;
 use function mb_strstr;
 use function mb_strtolower;
 use function rad2deg;
@@ -86,6 +87,8 @@ final class GeoObject
      * @param float        $longitude longitude given as radiant or degree
      * @param bool         $degree    false by default, has to be set to true if
      * @param array<mixed> $dbValues  database values, specific to the source implementation
+     *
+     * @throws UnexpectedValueException
      */
     public function __construct(string $name = '', float $latitude = 0.0, float $longitude = 0.0, bool $degree = false, array $dbValues = [])
     {
@@ -95,8 +98,8 @@ final class GeoObject
         if (mb_strstr((string) $latitude, ' ') && mb_strstr((string) $longitude, ' ')) {
             $this->latitude     = Geo::dms2deg((string) $latitude);
             $this->longitude    = Geo::dms2deg((string) $longitude);
-            $this->latitudeRad  = Geo::deg2rad($this->latitude);
-            $this->longitudeRad = Geo::deg2rad($this->longitude);
+            $this->latitudeRad  = deg2rad($this->latitude);
+            $this->longitudeRad = deg2rad($this->longitude);
         } else {
             if ((M_PI < abs($latitude)) || (M_PI < abs($longitude))) {
                 $degree = true;
@@ -115,8 +118,8 @@ final class GeoObject
             }
         }
 
-        $this->latitudeDMS  = (0 < $this->latitude ? Geo::CFG_STRINGS[Geo::GEO_ORIENTATION_SHORT][Geo::GEO_LANGUAGE_DEFAULT][0] : Geo::CFG_STRINGS[Geo::GEO_ORIENTATION_SHORT][Geo::GEO_LANGUAGE_DEFAULT][3]) . ' ' . Geo::deg2dms($this->latitude);
-        $this->longitudeDMS = (0 < $this->longitude ? Geo::CFG_STRINGS[Geo::GEO_ORIENTATION_SHORT][Geo::GEO_LANGUAGE_DEFAULT][2] : Geo::CFG_STRINGS[Geo::GEO_ORIENTATION_SHORT][Geo::GEO_LANGUAGE_DEFAULT][5]) . ' ' . Geo::deg2dms($this->longitude);
+        $this->latitudeDMS  = (0 < $this->latitude ? Geo::CFG_STRINGS[Geo::GEO_ORIENTATION_SHORT][Geo::GEO_LANGUAGE_DEFAULT][Geo::GEO_ORIENTATION_N] : Geo::CFG_STRINGS[Geo::GEO_ORIENTATION_SHORT][Geo::GEO_LANGUAGE_DEFAULT][Geo::GEO_ORIENTATION_SE]) . ' ' . Geo::deg2dms($this->latitude);
+        $this->longitudeDMS = (0 < $this->longitude ? Geo::CFG_STRINGS[Geo::GEO_ORIENTATION_SHORT][Geo::GEO_LANGUAGE_DEFAULT][Geo::GEO_ORIENTATION_E] : Geo::CFG_STRINGS[Geo::GEO_ORIENTATION_SHORT][Geo::GEO_LANGUAGE_DEFAULT][Geo::GEO_ORIENTATION_SW]) . ' ' . Geo::deg2dms($this->longitude);
     }
 
     /**
@@ -148,6 +151,7 @@ final class GeoObject
      *
      * @param GeoObject $geoObject GeoObject
      * @param int       $unit      please use GEO_UNIT_* constants
+     * @phpstan-param Geo::GEO_UNIT_KM|Geo::GEO_UNIT_MI|Geo::GEO_UNIT_IN|Geo::GEO_UNIT_SM|Geo::GEO_UNIT_FT|Geo::GEO_UNIT_YD|Geo::GEO_UNIT_DEFAULT $unit
      */
     public function getDistanceString(self $geoObject, int $unit = Geo::GEO_UNIT_DEFAULT): string
     {
@@ -167,7 +171,8 @@ final class GeoObject
      */
     public function getDistanceNS(self $geoObject, int $unit = Geo::GEO_UNIT_DEFAULT): float
     {
-        $earthRadius = GEO::getEarthRadius($unit);
+        $earthRadius = Geo::getEarthRadius($unit);
+
         if ($this->latitudeRad > $geoObject->latitudeRad) {
             $direction = -1;
         } else {
@@ -330,10 +335,6 @@ final class GeoObject
 
     public function nameSort(self $a, self $b): int
     {
-        if (!is_object($a) || !is_object($b)) {
-            return 0;
-        }
-
         if (!isset($a->name) || !isset($b->name)) {
             return 0;
         }

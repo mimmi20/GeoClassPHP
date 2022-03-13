@@ -13,8 +13,10 @@ declare(strict_types = 1);
 
 namespace GeoDB;
 
-use SOAP_Client;
+use SOAPClient;
+use SoapFault;
 
+use function is_string;
 use function unserialize;
 
 /**
@@ -22,15 +24,17 @@ use function unserialize;
  */
 final class Soap extends Common
 {
-    private SOAP_Client $soapClient;
+    private SOAPClient $soapClient;
 
     /**
      * @param array<string, int|string> $options
-     * @phpstan-param  array{language: int, unit: int, encoding: string} $options
+     * @phpstan-param  array{language?: int, unit?: int, encoding?: string} $options
+     *
+     * @throws SoapFault
      */
     public function __construct(string $url = '', array $options = [])
     {
-        $this->soapClient = new SOAP_Client($url);
+        $this->soapClient = new SOAPClient($url);
         $this->setOptions($options);
     }
 
@@ -43,15 +47,20 @@ final class Soap extends Common
      *
      * @return array<GeoObject>
      */
-    public function findGeoObject($searchConditions = []): array
+    public function findGeoObject(array | string $searchConditions = []): array
     {
         $parametersFindCity = [
             'returnType' => 0, // use 0 to receive an array of GeoObjects
             'name' => $searchConditions,
         ];
-        $ret                = $this->soapClient->call('findGeoObject', $parametersFindCity);
 
-        return unserialize($ret);
+        $ret = $this->soapClient->findGeoObject($parametersFindCity);
+
+        if (!is_string($ret)) {
+            return [];
+        }
+
+        return (array) unserialize($ret);
     }
 
     /**
@@ -75,8 +84,12 @@ final class Soap extends Common
             'name' => $geoObject->name,
         ];
 
-        $ret = $this->soapClient->call('findCloseByCity', $parametersFindClose);
+        $ret = $this->soapClient->findCloseByCity($parametersFindClose);
 
-        return unserialize($ret);
+        if (!is_string($ret)) {
+            return [];
+        }
+
+        return (array) unserialize($ret);
     }
 }

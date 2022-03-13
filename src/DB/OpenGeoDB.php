@@ -15,6 +15,8 @@ namespace GeoDB\DB;
 
 use GeoDB\Geo;
 use GeoDB\GeoObject;
+use PDOException;
+use UnexpectedValueException;
 
 use function count;
 use function getdate;
@@ -64,8 +66,8 @@ final class OpenGeoDB extends Relational
     /**
      * some options
      *
-     * @var array<string, array<string, string>|bool|int|string>
-     * @phpstan-var array{language: int, table_prefix: string, table: string, joins: array<string, string>, fields: array{name: string, longitude: string, latitude: string}, key: string, order: string, degree: bool, unit: int, encoding: string}
+     * @var array<string, array<int|string, string>|bool|int|string>
+     * @phpstan-var array{language: int, table_prefix: string, table: string, joins: array<int|string, string>, fields: array{name: string, longitude: string, latitude: string}, key: string, order: string, degree: bool, unit: int, encoding: string}
      */
     public array $options = [
         'language' => Geo::GEO_LANGUAGE_DEFAULT,
@@ -85,20 +87,13 @@ final class OpenGeoDB extends Relational
     ];
 
     /**
-     * @param array<string, int|string> $options
-     * @phpstan-param  array{language: int, unit: int, encoding: string} $options
-     */
-    public function __construct(string $dsn, array $options = [])
-    {
-        $this->_connectDB($dsn);
-        $this->setOptions($options);
-    }
-
-    /**
      * findAreaCodeLoc
      *
      * Returns an GeoObjects for the AreaCode
      * Simple search looks up AreaCode and Name
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
     public function findAreaCodeLoc(string $areaCode = '%'): ?GeoObject
     {
@@ -126,6 +121,9 @@ final class OpenGeoDB extends Relational
      * Simple search looks up AreaCode and Name
      *
      * @return array<GeoObject>
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
     public function getAreaCode(GeoObject $geoObject): array
     {
@@ -146,8 +144,11 @@ final class OpenGeoDB extends Relational
      * @param array<int|string, string>|string $searchConditions
      *
      * @return array<GeoObject>
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
-    public function findGeoObject($searchConditions = '%'): array
+    public function findGeoObject(array | string $searchConditions = '%'): array
     {
         if (is_array($searchConditions)) {
             return parent::findGeoObject($searchConditions);
@@ -170,7 +171,10 @@ final class OpenGeoDB extends Relational
      *
      * @return array<GeoObject>
      *
-     * @todo    void MySQL specific SQL
+     * @throws PDOException
+     * @throws UnexpectedValueException
+     *
+     * @todo void MySQL specific SQL
      */
     public function findCloseByGeoObjects(GeoObject $geoObject, int $maxRadius = 100, int $maxHits = 50): array
     {
@@ -209,11 +213,12 @@ final class OpenGeoDB extends Relational
     }
 
     /**
-     * @param int|string $id
-     *
      * @return array<GeoObject>
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
-    public function getByLocID($id): array
+    public function getByLocID(int | string $id): array
     {
         return $this->findGeoObject(['td.loc_id = ' . $id]);
     }

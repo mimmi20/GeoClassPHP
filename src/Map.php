@@ -13,9 +13,12 @@ declare(strict_types = 1);
 
 namespace GeoDB;
 
+use GdImage;
 use GeoDB\Helper\E00;
+use UnexpectedValueException;
 
 use function abs;
+use function array_key_exists;
 use function array_merge;
 use function count;
 use function end;
@@ -27,13 +30,15 @@ use function imagearc;
 use function imagefilledellipse;
 use function imageline;
 use function implode;
+use function is_string;
 use function mb_strpos;
 use function mb_strtolower;
 use function mb_substr;
-use function preg_replace;
+use function preg_replace_callback;
 use function round;
 use function str_contains;
 use function trim;
+use function urlencode;
 
 /**
  * Geo_Map
@@ -63,7 +68,7 @@ final class Map extends E00
      * @param int|string $x width of the generated image or path to image (string)
      * @param int        $y (optional) height of the generated image
      */
-    public function __construct($x = false, int $y = -1)
+    public function __construct($x, int $y = -1)
     {
         parent::__construct($x, $y);
 
@@ -94,6 +99,8 @@ final class Map extends E00
      * @param int               $height     vice versa
      *
      * @return array<int, float> width and height
+     *
+     * @throws UnexpectedValueException
      */
     public function getSizeByRange(array $rangeArray, int $width = 0, int $height = 0): array
     {
@@ -208,20 +215,25 @@ final class Map extends E00
      */
     public function addGeoObject(GeoObject $geoObject, string $color = 'black', int $radius = 0): void
     {
+        if (!$this->img instanceof GdImage) {
+            return;
+        }
+
         $x = round($this->scale((int) $geoObject->longitude, 'x'));
         $y = round($this->scale((int) $geoObject->latitude, 'y'));
+
         if (($x > $this->sizeX) || ($y > $this->sizeY)) {
             return;
         }
 
         $hasDrawn = false;
         if (function_exists('imagefilledellipse')) {
-            $hasDrawn = imagefilledellipse($this->img, (int) $x, (int) $y, $radius * 2, $radius * 2, $this->color[$color]);
+            $hasDrawn = imagefilledellipse($this->img, (int) $x, (int) $y, $radius * 2, $radius * 2, (int) $this->color[$color]);
         }
 
         if (!$hasDrawn) {
             for ($i = 1; $i <= $radius; ++$i) {
-                imagearc($this->img, (int) $x, (int) $y, $i, $i, 0, 360, $this->color[$color]);
+                imagearc($this->img, (int) $x, (int) $y, $i, $i, 0, 360, (int) $this->color[$color]);
             }
         }
 
@@ -263,15 +275,33 @@ final class Map extends E00
             }
 
             ++$this->imageMap[$imc]['count'];
-            if (isset($radii[$this->imageMap[$imc]['count']])) {
+
+            if (isset($radii[$this->imageMap[$imc]['count']]) && $this->img instanceof GdImage) {
                 $hasDrawn = false;
+
                 if (function_exists('imagefilledellipse')) {
-                    $hasDrawn = imagefilledellipse($this->img, $this->imageMap[$imc]['x'], $this->imageMap[$imc]['y'], $radii[$this->imageMap[$imc]['count']] * 2, $radii[$this->imageMap[$imc]['count']] * 2, $this->color[$this->imageMap[$imc]['color']]);
+                    $hasDrawn = imagefilledellipse(
+                        $this->img,
+                        (int) $this->imageMap[$imc]['x'],
+                        (int) $this->imageMap[$imc]['y'],
+                        $radii[$this->imageMap[$imc]['count']] * 2,
+                        $radii[$this->imageMap[$imc]['count']] * 2,
+                        (int) $this->color[$this->imageMap[$imc]['color']]
+                    );
                 }
 
                 if (!$hasDrawn) {
                     for ($i = $this->imageMap[$imc]['r']; $i <= $radii[$this->imageMap[$imc]['count']]; ++$i) {
-                        imagearc($this->img, $this->imageMap[$imc]['x'], $this->imageMap[$imc]['y'], $i, $i, 0, 360, $this->color[$this->imageMap[$imc]['color']]);
+                        imagearc(
+                            $this->img,
+                            (int) $this->imageMap[$imc]['x'],
+                            (int) $this->imageMap[$imc]['y'],
+                            $i,
+                            $i,
+                            0,
+                            360,
+                            (int) $this->color[$this->imageMap[$imc]['color']]
+                        );
                     }
                 }
 
@@ -319,7 +349,7 @@ final class Map extends E00
         }
 
         if (file_exists($data)) {
-            $this->draw($data, $this->color[$color]);
+            $this->draw($data, (int) $this->color[$color]);
 
             return true;
         }
@@ -336,41 +366,48 @@ final class Map extends E00
      */
     public function addOvlFile(string $data, string $color = 'black'): bool
     {
-        if (file_exists($data)) {
-            $ovlRows       = file($data);
-            $importantRows = [];
-            foreach ($ovlRows as $aRow) {
-                if (1 !== mb_strpos($aRow, 'Koord')) {
-                    continue;
-                }
-
-                $importantRows[] = trim($aRow);
-            }
-
-            $pointArray = [];
-            $lastIndex  = 0;
-            $lastX      = 0;
-            $lastY      = 0;
-            for ($i = 0; $i < count($importantRows); $i += 2) {
-                [$cruft, $data] = explode('Koord', $importantRows[$i]);
-                [$idA, $XA]     = explode('=', $data);
-                [$cruft, $data] = explode('Koord', $importantRows[$i + 1]);
-                [$idB, $YB]     = explode('=', $data);
-                $x              = $this->scale($XA, 'x');
-                $y              = $this->scale($YB, 'y');
-                if ($idA > $lastIndex) {
-                    imageline($this->img, $lastX, $lastY, $x, $y, $this->color[$color]);
-                }
-
-                $lastIndex = $idA;
-                $lastX     = $x;
-                $lastY     = $y;
-            }
-
-            return true;
+        if (!file_exists($data)) {
+            return false;
         }
 
-        return false;
+        $ovlRows = file($data);
+
+        if (false === $ovlRows) {
+            return false;
+        }
+
+        $importantRows = [];
+
+        foreach ($ovlRows as $aRow) {
+            if (1 !== mb_strpos($aRow, 'Koord')) {
+                continue;
+            }
+
+            $importantRows[] = trim($aRow);
+        }
+
+        $lastIndex = 0;
+        $lastX     = 0;
+        $lastY     = 0;
+
+        for ($i = 0; $i < count($importantRows); $i += 2) {
+            [$cruft, $data] = explode('Koord', $importantRows[$i]);
+            [$idA, $XA]     = explode('=', $data);
+            [$cruft, $data] = explode('Koord', $importantRows[$i + 1]);
+            [$idB, $YB]     = explode('=', $data);
+            $x              = $this->scale((float) $XA, 'x');
+            $y              = $this->scale((float) $YB, 'y');
+
+            if ($this->img instanceof GdImage && $idA > $lastIndex) {
+                imageline($this->img, $lastX, $lastY, $x, $y, (int) $this->color[$color]);
+            }
+
+            $lastIndex = $idA;
+            $lastX     = $x;
+            $lastY     = $y;
+        }
+
+        return true;
     }
 
     /**
@@ -435,11 +472,45 @@ final class Map extends E00
             foreach ($attributes as $attKey => $attVal) {
                 if ('href' === $attKey) {
                     $attributeList[] = $attKey . '="' .
-                        preg_replace('|(\[)([^\]]*)(\])|ie', '(isset($theObject->dbValues[\2])?urlencode($theObject->dbValues[\2]):"")', $attVal) .
+                        preg_replace_callback(
+                            '|(\[)([^\]]*)(\])|i',
+                            /**
+                             * @return string
+                             */
+                            static function ($matches) use ($theObject): string {
+                                if (
+                                    !array_key_exists(2, $matches)
+                                    || !array_key_exists($matches[2], $theObject->dbValues)
+                                    || !is_string($theObject->dbValues[$matches[2]])
+                                ) {
+                                    return '';
+                                }
+
+                                return urlencode($theObject->dbValues[$matches[2]]);
+                            },
+                            $attVal
+                        ) .
                         '"';
                 } else {
                     $attributeList[] = $attKey . '="' .
-                        preg_replace('|(\[)([^\]]*)(\])|ie', '(isset($theObject->dbValues[\2])?$theObject->dbValues[\2]:"")', $attVal) .
+                        preg_replace_callback(
+                            '|(\[)([^\]]*)(\])|i',
+                            /**
+                             * @return string
+                             */
+                            static function ($matches) use ($theObject): string {
+                                if (
+                                    !array_key_exists(2, $matches)
+                                    || !array_key_exists($matches[2], $theObject->dbValues)
+                                    || !is_string($theObject->dbValues[$matches[2]])
+                                ) {
+                                    return '';
+                                }
+
+                                return $theObject->dbValues[$matches[2]];
+                            },
+                            $attVal
+                        ) .
                         '"';
                 }
             }

@@ -16,8 +16,13 @@ namespace GeoDB\DB;
 use GeoDB\DB;
 use GeoDB\Geo;
 use GeoDB\GeoObject;
+use PDO;
+use PDOException;
+use UnexpectedValueException;
 
 use function count;
+use function is_array;
+use function is_string;
 use function str_replace;
 use function utf8_encode;
 
@@ -60,13 +65,16 @@ final class Nima extends DB
     public array $states = [];
 
     /**
-     * @param array<string, int|string> $options
-     * @phpstan-param  array{language: int, unit: int, encoding: string} $options
+     * @param array<string, array<string, string>|bool|int|string> $options
+     * @phpstan-param array{language?: int, table?: string, fields?: array{name: string, longitude: string, latitude: string}, order?: string, native?: bool, degree?: bool, unit?: int, encoding?: string} $options
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
-    public function __construct(string $dsn, array $options = [])
+    public function __construct(PDO $pdo, array $options = [])
     {
-        $this->_connectDB($dsn);
-        $this->setOptions($options);
+        parent::__construct($pdo, $options);
+
         $this->initNimaInformation();
     }
 
@@ -74,13 +82,16 @@ final class Nima extends DB
      * Determines further information of the database.
      *
      * Function is called by the constructor.
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
     public function initNimaInformation(): void
     {
         // find GeoObject with native name of the country
         $countryObjectArray = $this->performQuery('SELECT * FROM ' . $this->options['table'] . " WHERE DSG = 'PCLI' AND NT = 'N'");
 
-        if (1 === count($countryObjectArray)) {
+        if (is_array($countryObjectArray) && 1 === count($countryObjectArray)) {
             foreach ($countryObjectArray as $countryObject) {
                 if ($countryObject->dbValues['SHORT_FORM']) {
                     $this->country = $countryObject->dbValues['SHORT_FORM'];
@@ -96,6 +107,11 @@ final class Nima extends DB
 
         // find GeoObject with native name of the ADM1 (states)
         $statesObjectArray = $this->performQuery('SELECT * FROM ' . $this->options['table'] . " WHERE DSG = 'ADM1' AND NT = 'N' ORDER BY ADM1");
+
+        if (!is_array($statesObjectArray)) {
+            return;
+        }
+
         foreach ($statesObjectArray as $statesObject) {
             $key = $statesObject->dbValues['ADM1'];
 
@@ -116,6 +132,9 @@ final class Nima extends DB
      * By default all classifications (1=big, 5=small, 0=unclassified or very small) are considered.
      *
      * @return array<GeoObject>
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
     public function findClassifiedPopulatedPlace(string $name, string $placeClassificationSet = '1,2,3,4,5,0'): array
     {
@@ -133,15 +152,17 @@ final class Nima extends DB
      * @param array<int|string, string>|string $searchConditions
      *
      * @return array<GeoObject>
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
-    public function findGeoObject($searchConditions = '%', string $featureClassificationSet = 'A,P,V,L,U,R,T,H,S', string $placeClassificationSet = '0,1,2,3,4,5,6'): array
+    public function findGeoObject(array | string $searchConditions = '%', string $featureClassificationSet = 'A,P,V,L,U,R,T,H,S', string $placeClassificationSet = '0,1,2,3,4,5,6'): array
     {
-        if (Geo::GEO_ENCODING_UTF_8 === $this->options['encoding']) {
+        if (is_string($searchConditions) && Geo::GEO_ENCODING_UTF_8 === $this->options['encoding']) {
             $searchConditions = utf8_encode($searchConditions);
         }
 
-        $query = 'SELECT *' .
-                 ' FROM  ' . $this->options['table'] .
+        $query = 'SELECT * FROM  ' . $this->options['table'] .
                  " WHERE FC IN ('" . str_replace(',', "','", $featureClassificationSet) . "') AND PC IN (" . $placeClassificationSet . ')' .
                  ' AND ' . $this->options['fields']['name'] . " LIKE '" . $searchConditions . "'" .
                  ' ORDER BY ' . $this->options['order'];
@@ -157,14 +178,18 @@ final class Nima extends DB
      * By default all classifications ("A,P,V,L,U,R,T,H,S") respective (1=big, 5=small, 0=unclassified or very small) are considered.
      *
      * @return array<GeoObject>
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
     public function findCloseByGeoObjects(GeoObject $geoObject, int $maxRadius = 100, int $maxHits = 50, string $featureClassificationSet = 'A,P,V,L,U,R,T,H,S', string $placeClassificationSet = '0,1,2,3,4,5,6'): array
     {
-        $query  = 'SELECT *,';
-        $query .= ' ' . $this->getDistanceFormula($geoObject) . ' AS distance';
+        $query  = 'SELECT *, ';
+        $query .= $this->getDistanceFormula($geoObject) . ' AS distance';
         $query .= ' FROM ' . $this->options['table'];
         $query .= " WHERE FC IN ('" . str_replace(',', "','", $featureClassificationSet) . "') AND PC IN (" . $placeClassificationSet . ')';
         $query .= ' AND ' . $this->getDistanceFormula($geoObject) . ' < ' . $maxRadius;
+
         if ($this->options['native']) {
             $query .= " AND NT = 'N'";
         }

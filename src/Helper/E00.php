@@ -14,6 +14,7 @@ declare(strict_types = 1);
 namespace GeoDB\Helper;
 
 use function fclose;
+use function feof;
 use function fgets;
 use function fopen;
 use function preg_match;
@@ -42,8 +43,18 @@ class E00 extends Map
 
         $numRecords = 0;
         $ln         = 0;
+        $pl         = [
+            'x' => 0,
+            'y' => 0,
+        ];
 
-        while (0 || $line = fgets($f, 1024)) {
+        while (!feof($f)) {
+            $line = fgets($f, 1024);
+
+            if (false === $line) {
+                return false;
+            }
+
             ++$ln;
 
             // a node definition
@@ -56,9 +67,12 @@ class E00 extends Map
                 $pl['x'] = -1;
                 $pl['y'] = -1;
 
+                continue;
+            }
+
             // 2 coordinates
-            } elseif (
-                $numRecords
+            if (
+                0 < $numRecords
                 && preg_match('#^ *([-+]?[0-9]\.[0-9]{7}E[-+][0-9]{2}) *([-+]?[0-9]\.[0-9]{7}E[-+][0-9]{2}) *([-+]?[0-9]\.[0-9]{7}E[-+][0-9]{2}) *([-+]?[0-9]\.[0-9]{7}E[-+][0-9]{2})#', $line, $a)
             ) {
                 // print $a[0]."<br />";
@@ -91,9 +105,12 @@ class E00 extends Map
 
                 --$numRecords;
 
+                continue;
+            }
+
             // 1 coordinate
-            } elseif (
-                $numRecords
+            if (
+                0 < $numRecords
                 && preg_match('#^ *([-+]?[0-9]\.[0-9]{7}E[-+][0-9]{2}) *([-+]?[0-9]\.[0-9]{7}E[-+][0-9]{2})#', $line, $a)
             ) {
                 if (
@@ -114,8 +131,10 @@ class E00 extends Map
 
                 --$numRecords;
 
-            // done
-            } elseif (2 < $ln) {
+                continue;
+            }
+
+            if (2 < $ln) {
                 // print "died at: ".$ln."<br />";
                 break;
             }

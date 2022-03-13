@@ -13,6 +13,8 @@ declare(strict_types = 1);
 
 namespace GeoDB\Helper;
 
+use GdImage;
+
 use function imagecolorallocate;
 use function imagecreate;
 use function imagecreatefrompng;
@@ -21,6 +23,8 @@ use function imagepng;
 use function imagesx;
 use function imagesy;
 use function is_file;
+use function is_int;
+use function is_string;
 
 /**
  * the map class provides the basic operations for creating maps
@@ -36,19 +40,17 @@ use function is_file;
  */
 class Map
 {
-    /** @var false|resource */
+    /** @var false|GdImage */
     protected $img;
 
-    /** @var false|int|string */
-    protected $sizeX;
+    protected int $sizeX;
 
-    /** @var false|int */
-    protected $sizeY;
+    protected int $sizeY;
 
-    /** @var array<int> */
+    /** @var array<float> */
     private array $min;
 
-    /** @var array<int> */
+    /** @var array<float> */
     private array $max;
 
     /**
@@ -59,32 +61,36 @@ class Map
      */
     public function __construct($sizeX, int $sizeY = -1)
     {
-        if (is_file($sizeX)) {
+        if (is_string($sizeX) && is_file($sizeX)) {
             $this->img = imagecreatefrompng($sizeX);
 
-            $this->sizeX = imagesx($this->img);
-            $this->sizeY = imagesy($this->img);
-        } else {
+            if ($this->img instanceof GdImage) {
+                $this->sizeX = (int) imagesx($this->img);
+                $this->sizeY = (int) imagesy($this->img);
+            }
+        } elseif (is_int($sizeX)) {
             $this->sizeX = $sizeX;
             $this->sizeY = $sizeY;
 
             if (
-                !isset($this->sizeX)
-                || 0 > $this->sizeX
+                0 > $this->sizeX
                 || 2048 < $this->sizeX
             ) {
                 $this->sizeX = 640;
             }
 
             if (
-                !isset($this->sizeY)
-                || 0 > $this->sizeY
+                0 > $this->sizeY
                 || 2048 < $this->sizeY
             ) {
                 $this->sizeY = 480;
             }
 
-            $this->img = imagecreate($this->sizeX, $this->sizeY);
+            $img = imagecreate($this->sizeX, $this->sizeY);
+
+            if ($img instanceof GdImage) {
+                $this->img = $img;
+            }
         }
 
         $this->min = ['x' => 9, 'y' => 55];
@@ -132,6 +138,10 @@ class Map
      */
     protected function drawClipped(int $x1, int $y1, int $x2, int $y2, int $col): void
     {
+        if (!$this->img instanceof GdImage) {
+            return;
+        }
+
         if (
             (
                 $x1 > $this->max['x']
@@ -170,6 +180,10 @@ class Map
      */
     protected function dump(string $fn): bool
     {
+        if (!$this->img instanceof GdImage) {
+            return false;
+        }
+
         return imagepng($this->img, $fn);
     }
 
@@ -184,6 +198,10 @@ class Map
      */
     protected function color(int $r, int $g, int $b)
     {
+        if (!$this->img instanceof GdImage) {
+            return false;
+        }
+
         return imagecolorallocate($this->img, $r, $g, $b);
     }
 }

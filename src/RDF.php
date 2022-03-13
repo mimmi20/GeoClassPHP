@@ -13,6 +13,8 @@ declare(strict_types = 1);
 
 namespace GeoDB;
 
+use UnexpectedValueException;
+
 use function count;
 use function explode;
 use function file_get_contents;
@@ -36,7 +38,9 @@ final class RDF extends Common
      *
      * @param string                    $rdfContent content of the rdf-file
      * @param array<string, int|string> $options
-     * @phpstan-param  array{language: int, unit: int, encoding: string} $options
+     * @phpstan-param  array{language?: int, unit?: int, encoding?: string} $options
+     *
+     * @throws UnexpectedValueException
      */
     public function __construct(string $rdfContent, array $options = [])
     {
@@ -98,7 +102,7 @@ final class RDF extends Common
             $objects[]                          = $copyOfItem;
         }
 
-        usort($objects, ['Geo_Object', 'distanceSort']);
+        usort($objects, [GeoObject::class, 'distanceSort']);
 
         return $objects;
     }
@@ -107,11 +111,17 @@ final class RDF extends Common
      * Sets the instance-variable to the new value.
      *
      * @param string $rdfContent string (RDF or URL)
+     *
+     * @throws UnexpectedValueException
      */
     private function setArrayOfGeoObjects(string $rdfContent): void
     {
-        if (str_starts_with($rdfContent, 'http://')) {
+        if (str_starts_with($rdfContent, 'http://') || str_starts_with($rdfContent, 'https://')) {
             $rdfContent = file_get_contents($rdfContent);
+        }
+
+        if (false === $rdfContent) {
+            return;
         }
 
         $this->geoObjectArray = $this->extractGeoObjects($rdfContent);
@@ -123,6 +133,8 @@ final class RDF extends Common
      * @param string $rdfContent string (RDF)
      *
      * @return array<int, GeoObject>
+     *
+     * @throws UnexpectedValueException
      *
      * @todo    void this ugly global
      * @todo    GEO_LANGUAGE_* as parameter

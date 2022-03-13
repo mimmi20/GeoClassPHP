@@ -25,8 +25,7 @@ class Common
     /**
      * Options
      *
-     * @var array<string, int|string>
-     * @phpstan-var array{language: int, unit: int, encoding: string}
+     * @var non-empty-array<string, int|string>
      */
     private array $options = [
         'language' => Geo::GEO_LANGUAGE_DEFAULT,
@@ -38,7 +37,7 @@ class Common
      * set options
      *
      * @param array<string, int|string> $options
-     * @phpstan-param  array{language: int, unit: int, encoding: string} $options
+     * @phpstan-param  array{language?: int, unit?: int, encoding?: string} $options
      */
     public function setOptions(array $options = []): void
     {

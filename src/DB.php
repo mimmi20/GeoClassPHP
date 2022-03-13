@@ -13,6 +13,12 @@ declare(strict_types = 1);
 
 namespace GeoDB;
 
+use PDO;
+use PDOException;
+use PDOStatement;
+use UnexpectedValueException;
+
+use function assert;
 use function implode;
 use function is_array;
 use function is_string;
@@ -27,9 +33,9 @@ class DB extends Common
     /**
      * DB object (PEAR::DB)
      *
-     * @var GeoObject|null   DB
+     * @var PDO DB
      */
-    private ?GeoObject $db = null;
+    protected PDO $pdo;
 
     /**
      * some options
@@ -53,11 +59,14 @@ class DB extends Common
 
     /**
      * @param array<string, int|string> $options
-     * @phpstan-param  array{language: int, unit: int, encoding: string} $options
+     * @phpstan-param  array{language?: int, unit?: int, encoding?: string} $options
+     *
+     * @throws PDOException
      */
-    public function __construct(string $dsn, array $options = [])
+    public function __construct(PDO $pdo, array $options = [])
     {
-        $this->connectDB($dsn);
+        $this->pdo = $pdo;
+
         $this->setOptions($options);
     }
 
@@ -69,15 +78,18 @@ class DB extends Common
      * @param array<int|string, string>|string $searchConditions
      *
      * @return array<GeoObject>
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
-    public function findGeoObject($searchConditions = '%'): array
+    public function findGeoObject(array | string $searchConditions = '%'): array
     {
         if (is_array($searchConditions)) {
             $where = [];
 
             foreach ($searchConditions as $key => $val) {
                 if (is_string($key)) {
-                    $where[] = $key . " = '" . $val . "'";
+                    $where[] = $key . ' = ' . $this->pdo->quote($val);
                 } else {
                     $where[] = $val;
                 }
@@ -104,7 +116,10 @@ class DB extends Common
      *
      * @return array<GeoObject>
      *
-     * @todo    void MySQL specific SQL
+     * @throws PDOException
+     * @throws UnexpectedValueException
+     *
+     * @todo void MySQL specific SQL
      */
     public function findCloseByGeoObjects(GeoObject $geoObject, int $maxRadius = 100, int $maxHits = 50): array
     {
@@ -113,6 +128,7 @@ class DB extends Common
         $query .= ' FROM ' . $this->options['table'];
         $query .= ' WHERE ' . $this->getDistanceFormula($geoObject) . ' < ' . $maxRadius;
         $query .= ' ORDER BY distance ASC';
+
         if ($maxHits) {
             $query .= ' LIMIT 0, ' . $maxHits;
         }
@@ -126,17 +142,20 @@ class DB extends Common
      *
      * @param string $query SQL query
      *
-     * @return mixed array of GeoObjects or DBError
+     * @return array<int, GeoObject>
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
-    protected function performQuery(string $query)
+    protected function performQuery(string $query): array
     {
-        $queryResult = $this->db->query($query);
+        $driverOptions = [PDO::ATTR_CURSOR => PDO::CURSOR_FWDONLY];
 
-        if (self::isError($queryResult)) {
-            return $queryResult;
-        }
+        $stmt = $this->pdo->prepare($query, $driverOptions);
+        assert($stmt instanceof PDOStatement);
+        $stmt->execute();
 
-        return $this->transformQueryResult($queryResult);
+        return $this->transformQueryResult($stmt);
     }
 
     /**
@@ -155,38 +174,30 @@ class DB extends Common
     }
 
     /**
-     * Establishes a connection to the database
-     */
-    private function connectDB(string $dsn): void
-    {
-        $this->db = $this->connect($dsn);
-
-        if (self::isError($this->db)) {
-            return;
-        }
-
-        $this->db->setFetchMode(DB_FETCHMODE_ASSOC);
-    }
-
-    /**
      * Transforms a db-query-result to an array of GeoObjects.
      *
      * @return array<int, GeoObject>
+     *
+     * @throws UnexpectedValueException
      */
-    private function transformQueryResult(Result $queryResult): array
+    private function transformQueryResult(PDOStatement $stmt): array
     {
         $foundGeoObjects = [];
-        while ($dbValues = $queryResult->fetchRow()) {
+
+        while ($dbValues = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            assert(is_array($dbValues));
+
             if (Geo::GEO_ENCODING_UTF_8 === $this->options['encoding']) {
                 foreach ($dbValues as $key => $val) {
                     $dbValues[$key] = utf8_decode($val);
                 }
             }
 
-            $name              = $dbValues[$this->options['fields']['name']];
-            $latitude          = $dbValues[$this->options['fields']['latitude']];
-            $longitude         = $dbValues[$this->options['fields']['longitude']];
-            $foundGeoObjects[] = new GeoObject($name, (float) $latitude, (float) $longitude, $this->options['degree'], $dbValues);
+            $name      = $dbValues[$this->options['fields']['name']];
+            $latitude  = $dbValues[$this->options['fields']['latitude']];
+            $longitude = $dbValues[$this->options['fields']['longitude']];
+
+            $foundGeoObjects[] = new GeoObject((string) $name, (float) $latitude, (float) $longitude, $this->options['degree'], $dbValues);
         }
 
         return $foundGeoObjects;

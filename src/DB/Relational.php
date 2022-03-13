@@ -16,6 +16,8 @@ namespace GeoDB\DB;
 use GeoDB\DB;
 use GeoDB\Geo;
 use GeoDB\GeoObject;
+use PDOException;
+use UnexpectedValueException;
 
 use function array_merge;
 use function implode;
@@ -34,8 +36,8 @@ class Relational extends DB
     /**
      * some options
      *
-     * @var array<string, array<string, string>|bool|int|string>
-     * @phpstan-var array{language: int, table: string, joins: array<string, string>, fields: array{name: string, longitude: string, latitude: string}, key: string, order: string, degree: bool, unit: int, encoding: string}
+     * @var array<string, array<int|string, string>|bool|int|string>
+     * @phpstan-var array{language: int, table: string, joins: array<int|string, string>, fields: array{name: string, longitude: string, latitude: string}, key: string, order: string, degree: bool, unit: int, encoding: string}
      */
     public array $options = [
         'language' => Geo::GEO_LANGUAGE_DEFAULT,
@@ -57,16 +59,6 @@ class Relational extends DB
     ];
 
     /**
-     * @param array<string, int|string> $options
-     * @phpstan-param  array{language: int, unit: int, encoding: string} $options
-     */
-    public function __construct(string $dsn, array $options = [])
-    {
-        $this->_connectDB($dsn);
-        $this->setOptions($options);
-    }
-
-    /**
      * Find GeoObjects
      *
      * Returns an array of GeoObjects which fits the $searchConditions
@@ -74,15 +66,18 @@ class Relational extends DB
      * @param array<int|string, string>|string $searchConditions
      *
      * @return array<GeoObject>
+     *
+     * @throws PDOException
+     * @throws UnexpectedValueException
      */
-    public function findGeoObject($searchConditions = '%'): array
+    public function findGeoObject(array | string $searchConditions = '%'): array
     {
         if (is_array($searchConditions)) {
             $where = [];
 
             foreach ($searchConditions as $key => $val) {
                 if (is_string($key)) {
-                    $where[] = $key . " = '" . $val . "'";
+                    $where[] = $key . ' = ' . $this->pdo->quote($val);
                 } else {
                     $where[] = $val;
                 }
@@ -110,7 +105,10 @@ class Relational extends DB
      *
      * @return array<GeoObject>
      *
-     * @todo    void MySQL specific SQL
+     * @throws PDOException
+     * @throws UnexpectedValueException
+     *
+     * @todo void MySQL specific SQL
      */
     public function findCloseByGeoObjects(GeoObject $geoObject, int $maxRadius = 100, int $maxHits = 50): array
     {
@@ -120,6 +118,7 @@ class Relational extends DB
                  ' WHERE ' . implode(' AND ', $this->options['joins']) .
                             ' AND ' . $this->getDistanceFormula($geoObject) . ' < ' . $maxRadius .
                  ' ORDER BY distance ASC';
+
         if ($maxHits) {
             $query .= ' LIMIT 0, ' . $maxHits;
         }

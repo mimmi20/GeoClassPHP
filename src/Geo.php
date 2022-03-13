@@ -11,35 +11,9 @@
 
 declare(strict_types = 1);
 
-// +----------------------------------------------------------------------+
-// | GeoClass                                                             |
-// +----------------------------------------------------------------------+
-// | Copyright (c) 2003-04 multimediamotz, Stefan Motz                    |
-// +----------------------------------------------------------------------+
-// | License (LGPL)                                                       |
-// | This library is free software; you can redistribute it and/or        |
-// | modify it under the terms of the GNU Lesser General Public           |
-// | License as published by the Free Software Foundation; either         |
-// | version 2.1 of the License, or (at your option) any later version.   |
-// +----------------------------------------------------------------------+
-// | This library is distributed in the hope that it will be useful,      |
-// | but WITHOUT ANY WARRANTY; without even the implied warranty of       |
-// | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU     |
-// | Lesser General Public License for more details.                      |
-// +----------------------------------------------------------------------+
-// | You should have received a copy of the GNU Lesser General Public     |
-// | License along with this library; if not, write to the Free Software  |
-// | Foundation Inc., 59 Temple Place,Suite 330, Boston,MA 02111-1307 USA |
-// +----------------------------------------------------------------------+
-// | Authors:  Stefan Motz   <stefan@multimediamotz.de>                   |
-// |           Arne Klempert <arne@klempert.de>                           |
-// | Version:  0.3.1a                                                     |
-// | Homepage: http://geoclassphp.sourceforge.net                         |
-// +----------------------------------------------------------------------+
-
 namespace GeoDB;
 
-use PEAR;
+use UnexpectedValueException;
 
 use function abs;
 use function class_exists;
@@ -76,7 +50,7 @@ use function sprintf;
  *                 and additional information (depends on the source
  *                 implementation)
  */
-final class Geo extends PEAR
+final class Geo
 {
     /**
      * Unit constants
@@ -247,15 +221,17 @@ final class Geo extends PEAR
      * @param string       $dsn     DSN
      * @param array<mixed> $options Options for implementation
      *
-     * @return mixed   a newly created Geo object or an Error object on error
+     * @return mixed a newly created Geo object or an Error object on error
+     *
+     * @throws UnexpectedValueException
      */
-    public function setupSource(string $type, string $dsn = '', array $options = [])
+    public function setupSource(string $type, string $dsn = '', array $options = []): mixed
     {
         include_once 'Geo/sources/' . $type . '.php';
         $classname = 'Geo_' . $type;
 
         if (!class_exists($classname)) {
-            return PEAR::raiseError('Class not found');
+            throw new UnexpectedValueException('Class not found');
         }
 
         return new $classname($dsn, $options);
@@ -278,21 +254,24 @@ final class Geo extends PEAR
      * @param string $dms latitude/longitude as degree/minutes/seconds
      *
      * @return float   degree
+     *
+     * @throws UnexpectedValueException
      */
     public static function dms2deg(string $dms, int $language = self::GEO_LANGUAGE_DEFAULT): float
     {
-        $negativeSigns       = [self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][4], self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][6], '-'];
-        $negativeSignsString = self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][4] . self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][6];
+        $negativeSigns       = [self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][self::GEO_ORIENTATION_S], self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][self::GEO_ORIENTATION_W], '-'];
+        $negativeSignsString = self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][self::GEO_ORIENTATION_S] . self::CFG_STRINGS[self::GEO_ORIENTATION_SHORT][$language][self::GEO_ORIENTATION_W];
+
         if (6 === mb_strlen($dms)) {
             $dms = '0' . $dms;
         } elseif (5 === mb_strlen($dms)) {
             $dms = '00' . $dms;
         }
 
-        $searchPattern = sprintf("|\\s*([%$1s\\-\\+]?)\\s*(\\d{1,3})[\\°\\s]*(\\d{1,2})[\\'\\s]*(\\d{1,2})([\\,\\.]*)(\\d*)[\\'\"\\s]*([%$1s\\-\\+]?)|i", $negativeSignsString);
+        $searchPattern = "|\\s*([%$1s\\-\\+]?)\\s*(\\d{1,3})[\\°\\s]*(\\d{1,2})[\\'\\s]*(\\d{1,2})([\\,\\.]*)(\\d*)[\\'\"\\s]*([" . $negativeSignsString . '\\-\\+]?)|i';
 
         if (!preg_match($searchPattern, $dms, $result)) {
-            return PEAR::raiseError('No DMS-Format (Like 51° 24\' 32.123\'\' W)');
+            throw new UnexpectedValueException('No DMS-Format (Like 51° 24\' 32.123\'\' W)');
         }
 
         if (in_array(mb_strtoupper($result[1]), $negativeSigns, true) || in_array(mb_strtoupper($result[7]), $negativeSigns, true)) {
@@ -301,11 +280,11 @@ final class Geo extends PEAR
             $algSign = 1.;
         }
 
-        if ((360 < 1. * $result[2]) || (60 <= $result[3]) || (60 <= $result[4])) {
-            return PEAR::raiseError('Values out of range');
+        if ((360 < 1. * (float) $result[2]) || (60 <= (float) $result[3]) || (60 <= (float) $result[4])) {
+            throw new UnexpectedValueException('Values out of range');
         }
 
-        return $algSign * ($result[2] + (($result[3] + (($result[4] . '.' . $result[6]) * 10 / 6) / 100) * 10 / 6) / 100);
+        return $algSign * ((float) $result[2] + ((float) ($result[3] + ((float) ($result[4] . '.' . $result[6]) * 10 / 6) / 100) * 10 / 6) / 100);
     }
 
     /**
@@ -316,7 +295,7 @@ final class Geo extends PEAR
      * parameter $decPlaces. The direction (N, S, W, E) must be added manually
      * (e.g. $output = "E ".deg2dms(7.441944); )
      *
-     * @return string  degrees minutes seconds
+     * @return string degrees minutes seconds
      */
     public static function deg2dms(float $degFloat, int $decPlaces = 0): string
     {
@@ -351,28 +330,14 @@ final class Geo extends PEAR
      */
     public static function getEarthRadius(int $unit = self::GEO_UNIT_DEFAULT): float
     {
-        switch ($unit) {
-            case self::GEO_UNIT_KM:        // kilometer
-                return self::GEO_EARTH_RADIUS;
-
-            case self::GEO_UNIT_MI:        // mile
-                return self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2MI;
-
-            case self::GEO_UNIT_IN:        // inch
-                return self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2IN;
-
-            case self::GEO_UNIT_SM:        // nautical miles
-                return self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2SM;
-
-            case self::GEO_UNIT_FT:        // foot
-                return self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2FT;
-
-            case self::GEO_UNIT_YD:        // yard
-                return self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2YD;
-
-            default:
-                return self::GEO_EARTH_RADIUS;
-        }
+        return match ($unit) {
+            self::GEO_UNIT_MI => self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2MI,
+            self::GEO_UNIT_IN => self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2IN,
+            self::GEO_UNIT_SM => self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2SM,
+            self::GEO_UNIT_FT => self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2FT,
+            self::GEO_UNIT_YD => self::GEO_EARTH_RADIUS * self::GEO_UNIT_KM2YD,
+            default => self::GEO_EARTH_RADIUS,
+        };
     }
 
     /**
@@ -385,6 +350,8 @@ final class Geo extends PEAR
      * @param string           $name       Name of the new Geo Object
      *
      * @return GeoObject       a newly created Geo object
+     *
+     * @throws UnexpectedValueException
      */
     public static function getBarycenter(array $theObjects, string $name = 'Barycenter'): GeoObject
     {
