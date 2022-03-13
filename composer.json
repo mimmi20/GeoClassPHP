@@ -1,0 +1,59 @@
+{
+  "name": "mimmi20/geo-class-php",
+  "description": "Provides a PHP class to use with the opengeodb database",
+  "license": "LGPL-2.1-or-later",
+  "type": "library",
+  "keywords": [
+    "opengeodb",
+    "geolocation"
+  ],
+  "authors": [
+    {
+      "name": "Thomas Müller",
+      "homepage": "https://github.com/mimmi20",
+      "role": "Developer"
+    },
+    {
+      "name": "Contributors",
+      "homepage": "https://github.com/mimmi20/GeoClassPHP/graphs/contributors"
+    }
+  ],
+  "homepage": "https://github.com/mimmi20/GeoClassPHP",
+  "support": {
+    "issues": "https://github.com/mimmi20/GeoClassPHP/issues",
+    "source": "https://github.com/mimmi20/GeoClassPHP"
+  },
+  "require": {
+    "php": "^8.1.0",
+    "ext-mbstring": "*",
+    "ext-pdo": "*"
+  },
+  "require-dev": {
+    "mimmi20/coding-standard": "^2.6.3",
+    "phpstan/extension-installer": "^1.1.0",
+    "phpstan/phpstan": "^1.4.9",
+    "phpstan/phpstan-deprecation-rules": "^1.0.0",
+    "phpstan/phpstan-phpunit": "^1.0.0",
+    "phpunit/phpunit": "^9.5.18"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "autoload": {
+    "psr-4": {
+      "GeoDB\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "GeoDB\\": "tests/"
+    }
+  },
+  "config": {
+    "preferred-install": "dist",
+    "sort-packages": true,
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true,
+      "phpstan/extension-installer": true
+    }
+  }
+}
